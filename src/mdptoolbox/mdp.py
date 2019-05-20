@@ -403,9 +403,9 @@ class FiniteHorizon(MDP):
     >>> fh = mdptoolbox.mdp.FiniteHorizon(P, R, 0.9, 3)
     >>> fh.run()
     >>> fh.V
-    array([[ 2.6973,  0.81  ,  0.    ,  0.    ],
-           [ 5.9373,  3.24  ,  1.    ,  0.    ],
-           [ 9.9373,  7.24  ,  4.    ,  0.    ]])
+    array([[2.6973, 0.81  , 0.    , 0.    ],
+           [5.9373, 3.24  , 1.    , 0.    ],
+           [9.9373, 7.24  , 4.    , 0.    ]])
     >>> fh.policy
     array([[0, 0, 0],
            [0, 0, 1],
@@ -995,9 +995,9 @@ class QLearning(MDP):
     >>> ql = mdptoolbox.mdp.QLearning(P, R, 0.96)
     >>> ql.run()
     >>> ql.Q
-    array([[ 11.198909  ,  10.34652034],
-           [ 10.74229967,  11.74105792],
-           [  2.86980001,  12.25973286]])
+    array([[11.198909  , 10.34652034],
+           [10.74229967, 11.74105792],
+           [ 2.86980001, 12.25973286]])
     >>> expected = (11.198908998901134, 11.741057920409865, 12.259732864170232)
     >>> all(expected[k] - ql.V[k] < 1e-12 for k in range(len(expected)))
     True
@@ -1012,8 +1012,8 @@ class QLearning(MDP):
     >>> ql = mdptoolbox.mdp.QLearning(P, R, 0.9)
     >>> ql.run()
     >>> ql.Q
-    array([[ 33.33010866,  40.82109565],
-           [ 34.37431041,  29.67236845]])
+    array([[33.33010866, 40.82109565],
+           [34.37431041, 29.67236845]])
     >>> expected = (40.82109564847122, 34.37431040682546)
     >>> all(expected[k] - ql.V[k] < 1e-12 for k in range(len(expected)))
     True
@@ -1173,7 +1173,7 @@ class RelativeValueIteration(MDP):
     >>> all(expected[k] - rvi.V[k] < 1e-12 for k in range(len(expected)))
     True
     >>> rvi.average_reward
-    3.8852352464118312
+    3.885235246411831
     >>> rvi.policy
     (1, 0)
     >>> rvi.iter
