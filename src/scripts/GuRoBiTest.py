@@ -1,7 +1,5 @@
 from gurobipy import *
 
-from gurobipy import *
-
 # tested with Python 3.5.2 & Gurobi 7.0.1
 time_periods = ["January", "February", "March", "April", "May", "June"]
 
