@@ -1,6 +1,6 @@
 import mdptoolbox.example
 import numpy as np
-
+from mdp_base import CustomMdpSkeleton
 
 def simulate_forest_problem():
     # for problem details, look up https://pymdptoolbox.readthedocs.io/en/latest/api/example.html
@@ -27,6 +27,8 @@ def simulate_forest_problem():
     # and therefore policies can differ when the same parameters are used as an input to train it
     v2 = mdptoolbox.mdp.QLearning(P, R, discount_factor)
     v2.run()
+
+    v3 = CustomMdpSkeleton(P, R, None, None, None, None)
 
     # agent can either wait (0) or cut (1)
     # print the best action to take for each state
@@ -76,6 +78,7 @@ def test1():
     vi.run()
     print(vi.policy)
     # result is (0, 0, 0)
+
 
 
 # test1()
