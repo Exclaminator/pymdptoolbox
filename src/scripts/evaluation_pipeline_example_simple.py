@@ -1,6 +1,7 @@
 import mdptoolbox.example
 import numpy as np
-from mdp_base import CustomMdpSkeleton
+import mdp_base
+
 
 def simulate_forest_problem():
     # for problem details, look up https://pymdptoolbox.readthedocs.io/en/latest/api/example.html
@@ -28,12 +29,14 @@ def simulate_forest_problem():
     v2 = mdptoolbox.mdp.QLearning(P, R, discount_factor)
     v2.run()
 
-    v3 = CustomMdpSkeleton(P, R, None, None, None, None)
+    v3 = mdp_base.RandomMdp(P, R, None, None, None, None)
+    v3.run()
 
     # agent can either wait (0) or cut (1)
     # print the best action to take for each state
     print("value iteration policy " + str(v1.policy))
     print("q learning policy " + str(v2.policy))
+    print("random policy " + str(v3.policy))
 
     # a robust policy cuts as early as possible
     # a too conservative policy would cut even when p is very low,
@@ -43,9 +46,11 @@ def simulate_forest_problem():
 
     rewards_v1 = np.zeros(simulation_runs)
     rewards_v2 = np.zeros(simulation_runs)
+    rewards_v3 = np.zeros(simulation_runs)
     for i in range(simulation_runs):
         rewards_v1[i] = run_policy_on_problem(v1.policy, t_max, P, R)
         rewards_v2[i] = run_policy_on_problem(v2.policy, t_max, P, R)
+        rewards_v3[i] = run_policy_on_problem(v3.policy, t_max, P, R)
 
     print("v1, mean, variance, min_reward: "
           + str(np.mean(rewards_v1))+", "
@@ -55,6 +60,11 @@ def simulate_forest_problem():
           + str(np.mean(rewards_v2))+", "
           + str(np.var(rewards_v2))+", "
           + str(np.min(rewards_v2)))
+    print("v3, mean, variance, min_reward: "
+          + str(np.mean(rewards_v3))+", "
+          + str(np.var(rewards_v3))+", "
+          + str(np.min(rewards_v3)))
+    # todo: make plots that show the distribution of results
 
 
 def run_policy_on_problem(policy, t_max, P, R):
@@ -78,7 +88,6 @@ def test1():
     vi.run()
     print(vi.policy)
     # result is (0, 0, 0)
-
 
 
 # test1()
