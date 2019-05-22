@@ -1,8 +1,8 @@
 name: pymdptoolbox
 channels:
+  - defaults
   - gurobi
   - http://conda.anaconda.org/gurobi
-  - defaults
 dependencies:
   - blas=1.0=mkl
   - ca-certificates=2019.1.23=0
@@ -28,5 +28,4 @@ dependencies:
   - wincertstore=0.2=py37_0
   - pip:
     - gurobipy==8.1.0
-prefix: C:\Users\youri\Anaconda3\envs\pymdptoolbox
 
