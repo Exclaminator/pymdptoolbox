@@ -7,7 +7,8 @@ Version 1:
 We don't consider tweaking parameters.
 
 Input:
-- list of mdp-type's and their corresponding hyperparameters.
+- mdp_pair_list: list of mdp-type's and their corresponding hyperparameters. 
+    format: [(mdp_type, [hyperparameter1, hyperparameter2, ...]), ...]
 - An integer, indicating how many runs we want to do.
 - Options: list of keywords that indicate what metrics are outputted.
 - log_file: where to write our found results to. 
@@ -34,7 +35,10 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
         for problem in problem_list:
             result_problem = []
             # instantiate mdp
-            mdp = create_mdp_from_pair(mdp_pair, problem["P"], problem["R"])
+            mdp = create_mdp_from_pair(
+                mdp_pair,
+                problem
+            )
             # simulate some number of time
             for ii in range(number_of_runs):
                 result_problem.append(
@@ -59,17 +63,24 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
 
 """
 policy: policy retrieved by mdp
-t_max: maximum amount of state transitions to consider
-P: transition kernel
-R: reward kernel
+problem, contains:
+    t_max: maximum amount of state transitions to consider
+    P: transition kernel
+    R: reward kernel
+    P_var: uncertainty in P
+    R_var: uncertainty in R
 """
 
 
-def run_policy_on_problem(policy, t_max, P, R):
+def run_policy_on_problem(policy, problem):
     s = 0
     total_reward = 0
+    P = problem["P"]
+    R = problem["R"]
 
-    for t in range(t_max):
+    # todo, simulate P_var and R_var
+
+    for t in range(problem["t_max"]):
         action = policy[s]
         PP = P[action, s]
         s_new = np.random.choice(a=len(PP), p=PP)
@@ -84,12 +95,14 @@ def create_problem_from_environment_description(options, environment):
     # todo: based on the options and environments,
     #  create a list of problems that indicate what problems are used for evaluation
 
-    # output should be a list of (P, R) pairs, where P is the transition kernel and R the reward kernel
-    return [{"P": -1, "R": -1, "t_max": -1}, {"P": -2, "R": -2, "t_max": -2}]
+    # output should be a list of (P, R, P_var, R_var),
+    # where P is the transition kernel and R the reward kernel
+    # P_var and R_var indicate the uncertainty of P and R, such that we are able to construct ambiguity sets
+    return [{"P": -1, "R": -1, "P_var": -1, "R_var":-1, "t_max": -1}, {"P": -2, "R": -2, "P_var": -2, "R_var":-2, "t_max": -2}]
 
 
 """
-Function that creates the corresponding mdp given a (mdptype, parameters) pair
+Function that creates the corresponding mdp given a (string mdptype, list hyperparameters) pair
 """
 
 
