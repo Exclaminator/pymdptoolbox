@@ -53,11 +53,12 @@ class RobustIntervalModel(MDP):
 
     def computeSigma(self):
         # TODO: implement this method
-        # n <- amount of states
+        # S <- amount of states
+        # A <- amount of actions
         # T <- time horizon
         #
         # decision variables :
-        # mu: policy (one action per time horizon, thus t_max amound of actions) T x 1
+        # mu: policy (one action per state per time horizon) S x T
         #
         # hyperparameters :
         # p_up, p_low: (nonnegative n-vectors, so per state one value) S x 1
@@ -69,15 +70,16 @@ class RobustIntervalModel(MDP):
         #   + transpose(v) x p_up
         #   + mu (1 - transpose(p_up) x 1-vector)
         # }
-        ## dimension analysis, todo: get rid of the inconsistencies
-        # sigma has one value per state-action combination: S x A (or A x S ?)
+        ## dimension analysis
+        # todo: get rid of the inconsistencies, find out what is going wrong
+        # sigma has one value per state-action combination (right?) so S x A or A x S
         # v has a value per state: S x 1
         # (a) transpose(p_up - p_low) -> 1 x S
-        # (b) positive_part(mu x 1-vector - v) -> T x 1 * S x 1 = ??? but probably S x T (not sure how mu * 1-vector works)
-        # (a) x (b) -> 1 x S * S * T -> 1 x T
-        # transpose(v) x p_up -> 1 x S * S x 1 -> 1 x 1
-        # mu (1 - transpose(p_up) x 1-vector) ->  T x 1 * (1 - 1 x S * S x 1) = T x 1 * 1 x 1 = T x 1
-        # sigma = 1 x T + 1 x 1 + 1 x T = 1 x T <- (not S x A or A x S)
-        
+        # (b) positive_part(mu x 1-vector - v) -> S x T - S x T = S x T (not sure how mu * 1-vector works precisely)
+        # (a) x (b) -> 1 x S * S x T -> 1 x T
+        # transpose(v) x p_up -> T x S * S x 1 -> T x 1
+        # mu (1 - transpose(p_up) x 1-vector) -> S x T * (1 - 1 x S * 1-vector) = S x T * 1 x S = S x S (???)
+        # sigma = 1 x T + T x 1 + S x S = ??? <- (but not S x A or A x S)
+
         self.sigma = self.v.copt()
         pass
