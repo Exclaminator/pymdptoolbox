@@ -1,4 +1,5 @@
 from mdptoolbox.mdp import MDP, _printVerbosity
+from gurobipy import *
 import mdptoolbox.util as _util
 
 import math as _math
@@ -9,12 +10,12 @@ import scipy.sparse as _sp
 
 
 class RobustIntervalModel(MDP):
-    def __init__(self, transitions, reward, discount, epsilon=0.01,
-                 max_iter=10, skip_check=False, P_interval):
+    def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
+                 max_iter=10, skip_check=False):
         MDP.__init__(self, transitions, reward, discount, epsilon, max_iter, skip_check)
         # In the robust interval model, each p is given a lower and upper bound
-        self.P_interval = P_interval
-
+        self.p_lower = p_lower
+        self.p_upper = p_upper
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -23,8 +24,6 @@ class RobustIntervalModel(MDP):
 
         # TODO perhaps there can be a better initial guess. (v > 0)
         self.v = _np.ones(self.S)
-
-
 
         while True:
             self.iter += 1
@@ -64,34 +63,25 @@ class RobustIntervalModel(MDP):
         return value
 
     def computeSigma(self):
-        # TODO: implement this method
-        # S <- amount of states
-        # A <- amount of actions
-        # T <- time horizon
-        #
-        # decision variables :
-        # mu: policy (one action per state per time horizon) S x T
-        #
-        # hyperparameters :
-        # p_up, p_low: (nonnegative n-vectors, so per state one value) S x 1
-        # v_t(i): (worst case optimal value function in state i at stage t)
-        #
-        # the formula is
-        # sigma = minimize{
-        #   transpose(p_up - p_low) x positive_part(mu x 1-vector - v)
-        #   + transpose(v) x p_up
-        #   + mu (1 - transpose(p_up) x 1-vector)
-        # }
-        ## dimension analysis
-        # todo: get rid of the inconsistencies, find out what is going wrong
-        # sigma has one value per state-action combination (right? or is it just a 1x1 value?) so S x A or A x S
-        # v has a value per state per time: S x T
-        # (a) transpose(p_up - p_low) -> 1 x S
-        # (b) positive_part(mu x 1-vector - v) -> S x T - S x T = S x T (not sure how mu * 1-vector works precisely)
-        # (a) x (b) -> 1 x S * S x T -> 1 x T
-        # transpose(v) x p_up -> T x S * S x 1 -> T x 1
-        # mu (1 - transpose(p_up) x 1-vector) -> S x T * (1 - 1 x S * S x 1) = S x T
-        # sigma = 1 x T + T x 1 + S x T = ??? <- (but not S x A or A x S)
+        model = Model('SigmaIntervalMatrix')
+        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
+        objective = _np.add(
+                        _np.multiply(
+                            _np.transpose(_np.subtract(self.p_upper, self.p_lower)),
+                            _np.positive(
+                                _np.subtract(
+                                    _np.multiply(mu, _np.ones(self.S)),
+                                    self.v
+                        ))),
+                        _np.add(
+                            _np.multiply(_np.transpose(self.v), self.p_upper),
+                            mu * (1 - _np.multiply(_np.transpose(self.p_upper), _np.ones(self.S)))
+                        )
+                    )
 
-        self.sigma = self.v.copt()
-        pass
+        model.setObjective(objective, GRB.MINIMIZE)
+        model.optimize()
+        
+        for v in model.getVars():
+            if v.X != 0:
+                print("%s %f" % (v.Varname, v.X))
