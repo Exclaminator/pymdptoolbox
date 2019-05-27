@@ -61,39 +61,27 @@ class RobustIntervalModel(MDP):
     def computeSigma(self):
         model = Model('SigmaIntervalMatrix')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        objective = _np.add(
-                        _np.multiply(
-                            _np.transpose(
-                                _np.subtract(
-                                    self.p_upper,
-                                    self.p_lower
-                                )
-                            ),
-                            #_np.positive(
+        objective = LinExpr()
+        objective += _np.dot(
+                        _np.subtract(self.p_upper, self.p_lower),
+                        #_np.positive(
                             _np.subtract(
                                 _np.multiply(
                                     mu,
-                                    _np.ones(self.S, dtype=_np.int)
+                                    _np.ones(self.S, dtype=_np.float)
                                 ),
                                 self.v
                             )
-                        ),
-                        _np.add(
-                            _np.multiply(
-                                _np.transpose(self.v),
-                                self.p_upper
-                            ),
-                            _np.multiply(
-                                mu,
-                                (
-                                    1 - _np.multiply(
-                                        _np.transpose(self.p_upper),
-                                        _np.ones(self.S, dtype=_np.int)
-                                    )
-                                )
-                            )
-                        )
+                        #)
                     )
+
+        objective += _np.dot(
+                            self.v,
+                            self.p_upper)
+
+        objective += _np.multiply(
+                            mu,
+                            (1 - _np.dot(self.p_upper,_np.ones(self.S, dtype=_np.float))))
 
         model.setObjective(objective, GRB.MINIMIZE)
         model.optimize()
