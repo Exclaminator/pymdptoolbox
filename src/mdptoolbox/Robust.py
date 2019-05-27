@@ -62,15 +62,16 @@ class RobustIntervalModel(MDP):
         objective = LinExpr()
         objective += _np.dot(
                         _np.subtract(self.p_upper, self.p_lower),
-                        #_np.positive(
+                        _np.maximum(
                             _np.subtract(
                                 _np.multiply(
                                     mu,
                                     _np.ones(self.S, dtype=_np.float)
                                 ),
                                 self.V
-                            )
-                        #)
+                            ),
+                            _np.zeros(self.S)
+                        )
                     )
 
         objective += _np.dot(
