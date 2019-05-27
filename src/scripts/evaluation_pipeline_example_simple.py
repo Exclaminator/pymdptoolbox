@@ -76,13 +76,14 @@ def simulate_forest_problem():
     # todo: make plots that show the distribution of results
 
 
-def run_policy_on_problem(policy, t_max, P, R):
+def run_policy_on_problem(policy, t_max, P, R, p_up, p_low):
     s = 0
     total_reward = 0
 
     for t in range(t_max):
         action = policy[s]
         PP = P[action, s]
+        # todo: include p_up and p_low in the simulation
         s_new = np.random.choice(a=len(PP), p=PP)
         RR = R[s]
         total_reward += RR[action]
