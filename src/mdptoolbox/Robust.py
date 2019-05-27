@@ -35,7 +35,9 @@ class RobustIntervalModel(MDP):
             for s in range(self.S):
                 for a in range(self.A):
                     # TODO not sure about dimension of reward
-                    value = self.reward[a, s] + self.discount * self.sigma[s,a]
+                    # Sy: reward corresponds with the cost function
+                    value = self.computeValue()
+                    #value = self.reward[a, s] + self.discount * self.sigma[s,a]
                     if self.v_next[s] > value:
                         self.v_next[s] = value
 
@@ -50,6 +52,16 @@ class RobustIntervalModel(MDP):
         # TODO make policy
 
         self._endRun()
+
+    def computeValue(self):
+        # todo: implement this method
+
+        # action
+        # v = min(cost(i,a) + \vega \sigma^hat[s,a])
+
+        value = -1
+
+        return value
 
     def computeSigma(self):
         # TODO: implement this method
@@ -72,14 +84,14 @@ class RobustIntervalModel(MDP):
         # }
         ## dimension analysis
         # todo: get rid of the inconsistencies, find out what is going wrong
-        # sigma has one value per state-action combination (right?) so S x A or A x S
-        # v has a value per state: S x 1
+        # sigma has one value per state-action combination (right? or is it just a 1x1 value?) so S x A or A x S
+        # v has a value per state per time: S x T
         # (a) transpose(p_up - p_low) -> 1 x S
         # (b) positive_part(mu x 1-vector - v) -> S x T - S x T = S x T (not sure how mu * 1-vector works precisely)
         # (a) x (b) -> 1 x S * S x T -> 1 x T
         # transpose(v) x p_up -> T x S * S x 1 -> T x 1
-        # mu (1 - transpose(p_up) x 1-vector) -> S x T * (1 - 1 x S * 1-vector) = S x T * 1 x S = S x S (???)
-        # sigma = 1 x T + T x 1 + S x S = ??? <- (but not S x A or A x S)
+        # mu (1 - transpose(p_up) x 1-vector) -> S x T * (1 - 1 x S * S x 1) = S x T
+        # sigma = 1 x T + T x 1 + S x T = ??? <- (but not S x A or A x S)
 
         self.sigma = self.v.copt()
         pass
