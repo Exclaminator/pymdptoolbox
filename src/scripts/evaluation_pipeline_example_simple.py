@@ -1,6 +1,7 @@
 import mdptoolbox.example
 import numpy as np
 import mdp_base
+import mdptoolbox.Robust
 
 
 def simulate_forest_problem():
@@ -11,10 +12,17 @@ def simulate_forest_problem():
     # after a fire, the forest returns in its oldest state
     # after cutting, the forest is in the oldest state
     S = 10  # number of states
-    r1 = 20 # reward when 'wait' is performed in its oldest state
+    r1 = 20  # reward when 'wait' is performed in its oldest state
     r2 = 20  # reward when 'cut' is performed in its oldest state
     p = 0.05  # probability of fire
     P, R = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
+
+    up_ratio = 2
+    down_ratio = 1/2
+
+    p_up = np.full(S, p*up_ratio)
+    p_low = np.full(S, p*down_ratio)
+
     discount_factor = 0.9
     # epsilon = 0.01
     # max_iter = 100
@@ -29,7 +37,8 @@ def simulate_forest_problem():
     v2 = mdptoolbox.mdp.QLearning(P, R, discount_factor)
     v2.run()
 
-    v3 = mdp_base.RandomMdp(P, R, None, None, None, None)
+    # v3 is our interval model
+    v3 = mdptoolbox.Robust.RobustIntervalModel(P, R, discount=discount_factor, p_lower=p_low, p_upper=p_up)
     v3.run()
 
     # agent can either wait (0) or cut (1)
