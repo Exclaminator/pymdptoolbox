@@ -45,7 +45,7 @@ def simulate_forest_problem():
     # print the best action to take for each state
     print("value iteration policy " + str(v1.policy))
     print("q learning policy " + str(v2.policy))
-    print("random policy " + str(v3.policy))
+    print("Robust policy " + str(v3.policy))
 
     # a robust policy cuts as early as possible
     # a too conservative policy would cut even when p is very low,
@@ -57,9 +57,9 @@ def simulate_forest_problem():
     rewards_v2 = np.zeros(simulation_runs)
     rewards_v3 = np.zeros(simulation_runs)
     for i in range(simulation_runs):
-        rewards_v1[i] = run_policy_on_problem(v1.policy, t_max, P, R)
-        rewards_v2[i] = run_policy_on_problem(v2.policy, t_max, P, R)
-        rewards_v3[i] = run_policy_on_problem(v3.policy, t_max, P, R)
+        rewards_v1[i] = run_policy_on_problem(v1.policy, t_max, P, R, p_up, p_low)
+        rewards_v2[i] = run_policy_on_problem(v2.policy, t_max, P, R, p_up, p_low)
+        rewards_v3[i] = run_policy_on_problem(v3.policy, t_max, P, R, p_up, p_low)
 
     print("v1, mean, variance, min_reward: "
           + str(np.mean(rewards_v1))+", "
@@ -83,7 +83,12 @@ def run_policy_on_problem(policy, t_max, P, R, p_up, p_low):
     for t in range(t_max):
         action = policy[s]
         PP = P[action, s]
+
         # todo: include p_up and p_low in the simulation
+        pp_up = p_up[s]
+        pp_low = p_low[s]
+        # PP
+
         s_new = np.random.choice(a=len(PP), p=PP)
         RR = R[s]
         total_reward += RR[action]

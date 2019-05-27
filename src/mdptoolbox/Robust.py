@@ -40,11 +40,11 @@ class RobustIntervalModel(MDP):
             self.V = self.v_next
 
         # make policy
-        policy = _np.zeros(self.S)
+        self.policy = _np.zeros(self.S, dtype=_np.int)
         for s in range(self.S):
-            policy[s] = _np.argmin(_np.transpose(self.R)[s])
-        return policy
-        # self._endRun()
+            self.policy[s] = _np.argmin(_np.transpose(self.R)[s])
+        #return policy
+        self._endRun()
 
     def computeValue(self):
         # todo: implement this method
