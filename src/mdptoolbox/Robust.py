@@ -20,33 +20,31 @@ class RobustIntervalModel(MDP):
     def run(self):
         # Run the modified policy iteration algorithm.
         self._startRun()
-
         # TODO perhaps there can be a better initial guess. (v > 0)
-        self.v = _np.ones(self.S)
-        self.v_next = _np.full(self.v.shape, _np.inf)
+        self.V = _np.ones(self.S)
         self.sigma = 0
 
         while True:
             self.iter += 1
             self.sigma = self.computeSigma()
+            self.v_next = _np.full(self.V.shape, _np.inf)
 
             for s in range(self.S):
-                self.v_next[s] = _np.min(self.R[s,:])+self.discount*self.sigma
+                self.v_next[s] = _np.min(_np.transpose(self.R)[s])+self.discount*self.sigma
 
-            if _np.linalg.norm(self.v - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
+            if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
                 break
             if self.iter >= self.max_iter:
                 break
 
-            self.v = self.v_next
+            self.V = self.v_next
 
         # make policy
         policy = _np.zeros(self.S)
         for s in range(self.S):
-            policy[s] = _np.argmin(self.R[s, :])
-
-        self._endRun()
+            policy[s] = _np.argmin(_np.transpose(self.R)[s])
         return policy
+        # self._endRun()
 
     def computeValue(self):
         # todo: implement this method
@@ -70,13 +68,13 @@ class RobustIntervalModel(MDP):
                                     mu,
                                     _np.ones(self.S, dtype=_np.float)
                                 ),
-                                self.v
+                                self.V
                             )
                         #)
                     )
 
         objective += _np.dot(
-                            self.v,
+                            self.V,
                             self.p_upper)
 
         objective += _np.multiply(
@@ -86,6 +84,7 @@ class RobustIntervalModel(MDP):
         model.setObjective(objective, GRB.MINIMIZE)
         model.optimize()
 
-        for v in model.getVars():
-            if v.X != 0:
-                print("%s %f" % (v.Varname, v.X))
+        return model.objVal
+        # for v in model.getVars():
+        #     if v.X != 0:
+        #         print("aaaaaa %s %f" % (v.Varname, v.X))
