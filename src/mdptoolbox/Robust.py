@@ -19,38 +19,34 @@ class RobustIntervalModel(MDP):
 
     def run(self):
         # Run the modified policy iteration algorithm.
-
         self._startRun()
 
         # TODO perhaps there can be a better initial guess. (v > 0)
         self.v = _np.ones(self.S)
+        self.v_next = _np.full(self.v.shape, _np.inf)
+        self.sigma = 0
 
         while True:
             self.iter += 1
+            self.sigma = self.computeSigma()
 
-            # TODO not sure if this works
-            self.v_next = _np.full(self.v.shape, _np.inf)
-            self.computeSigma()
             for s in range(self.S):
-                for a in range(self.A):
-                    # TODO not sure about dimension of reward
-                    # Sy: reward corresponds with the cost function
-                    value = self.computeValue()
-                    #value = self.reward[a, s] + self.discount * self.sigma[s,a]
-                    if self.v_next[s] > value:
-                        self.v_next[s] = value
+                self.v_next[s] = _np.min(self.R[s,:])+self.discount*self.sigma
 
-            self.v = self.v_next.copy()
-
-            if _np.linalg.norm(self.v-self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
+            if _np.linalg.norm(self.v - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
                 break
             if self.iter >= self.max_iter:
                 break
 
+            self.v = self.v_next
 
-        # TODO make policy
+        # make policy
+        policy = _np.zeros(self.S)
+        for s in range(self.S):
+            policy[s] = _np.argmin(self.R[s, :])
 
         self._endRun()
+        return policy
 
     def computeValue(self):
         # todo: implement this method
@@ -81,7 +77,7 @@ class RobustIntervalModel(MDP):
 
         model.setObjective(objective, GRB.MINIMIZE)
         model.optimize()
-        
+
         for v in model.getVars():
             if v.X != 0:
                 print("%s %f" % (v.Varname, v.X))
