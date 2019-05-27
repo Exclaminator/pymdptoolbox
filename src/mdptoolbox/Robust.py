@@ -63,15 +63,35 @@ class RobustIntervalModel(MDP):
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         objective = _np.add(
                         _np.multiply(
-                            _np.transpose(_np.subtract(self.p_upper, self.p_lower)),
-                            _np.positive(
+                            _np.transpose(
                                 _np.subtract(
-                                    _np.multiply(mu, _np.ones(self.S)),
-                                    self.v
-                        ))),
+                                    self.p_upper,
+                                    self.p_lower
+                                )
+                            ),
+                            #_np.positive(
+                            _np.subtract(
+                                _np.multiply(
+                                    mu,
+                                    _np.ones(self.S, dtype=_np.int)
+                                ),
+                                self.v
+                            )
+                        ),
                         _np.add(
-                            _np.multiply(_np.transpose(self.v), self.p_upper),
-                            mu * (1 - _np.multiply(_np.transpose(self.p_upper), _np.ones(self.S)))
+                            _np.multiply(
+                                _np.transpose(self.v),
+                                self.p_upper
+                            ),
+                            _np.multiply(
+                                mu,
+                                (
+                                    1 - _np.multiply(
+                                        _np.transpose(self.p_upper),
+                                        _np.ones(self.S, dtype=_np.int)
+                                    )
+                                )
+                            )
                         )
                     )
 
