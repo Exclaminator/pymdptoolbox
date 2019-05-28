@@ -1,13 +1,6 @@
 from mdptoolbox.mdp import MDP, _printVerbosity
 from gurobipy import *
-import mdptoolbox.util as _util
-
-import math as _math
-import time as _time
-
 import numpy as _np
-import scipy.sparse as _sp
-
 
 class RobustIntervalModel(MDP):
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
@@ -43,18 +36,9 @@ class RobustIntervalModel(MDP):
         self.policy = _np.zeros(self.S, dtype=_np.int)
         for s in range(self.S):
             self.policy[s] = _np.argmin(_np.transpose(self.R)[s])
+
         #return policy
         self._endRun()
-
-    def computeValue(self):
-        # todo: implement this method
-
-        # action
-        # v = min(cost(i,a) + \vega \sigma^hat[s,a])
-
-        value = -1
-
-        return value
 
     def computeSigma(self):
         model = Model('SigmaIntervalMatrix')
