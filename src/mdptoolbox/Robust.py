@@ -30,7 +30,7 @@ class RobustIntervalModel(MDP):
             self.v_next = _np.full(self.V.shape, _np.inf)
 
             for s in range(self.S):
-                self.v_next[s] = _np.min(_np.transpose(self.R)[s])+self.discount*self.sigma
+                self.v_next[s] = _np.max(_np.transpose(self.R)[s])+self.discount*self.sigma
 
             if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
                 break
@@ -42,7 +42,7 @@ class RobustIntervalModel(MDP):
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
         for s in range(self.S):
-            self.policy[s] = _np.argmin(_np.transpose(self.R)[s])
+            self.policy[s] = _np.argmax(_np.transpose(self.R)[s])
         #return policy
         self._endRun()
 
@@ -76,11 +76,11 @@ class RobustIntervalModel(MDP):
 
         objective += _np.dot(
                             self.V,
-                            self.p_upper)
+                            self.p_lower)
 
         objective += _np.multiply(
                             mu,
-                            (1 - _np.dot(self.p_upper,_np.ones(self.S, dtype=_np.float))))
+                            (1 - _np.dot(self.p_lower,_np.ones(self.S, dtype=_np.float))))
 
         model.setObjective(objective, GRB.MINIMIZE)
         model.optimize()
