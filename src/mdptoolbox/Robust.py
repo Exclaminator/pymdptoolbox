@@ -159,7 +159,7 @@ class RobustIntervalModel(ValueIteration):
 
             # notify user
             if self.verbose:
-                _printVerbosity(self.iter, self.V)
+                _printVerbosity(self.iter, self.sigma)
 
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
@@ -184,9 +184,8 @@ class RobustIntervalModel(ValueIteration):
         objective += _np.multiply(mu, (1 - _np.dot(self.p_upper,_np.ones(self.S, dtype=_np.float))))
         model.setObjective(objective, GRB.MINIMIZE)
         
-        # stay silent if requested
-        if (not self.verbose):
-            model.setParam('OutputFlag', 0)
+        # stay silent
+        model.setParam('OutputFlag', 0)
 
         model.optimize()
         return model.objVal

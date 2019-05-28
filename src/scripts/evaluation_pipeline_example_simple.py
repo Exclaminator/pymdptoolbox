@@ -39,6 +39,7 @@ def simulate_forest_problem():
 
     # v3 is our interval model
     v3 = mdptoolbox.Robust.RobustIntervalModel(P, R, discount=discount_factor, p_lower=p_low, p_upper=p_up)
+    v3.setVerbose()
     v3.run()
 
     # agent can either wait (0) or cut (1)
