@@ -197,6 +197,10 @@ class RobustIntervalModel(ValueIteration):
         objective += - (1 + beta)*lmbda
         for j in range(self.S):
             objective += lmbda * self.P[action][state][j] * _np.log(lmbda*self.P[action][state][j] / (mu - self.V[j]))
+
+        model.addConstr(lmbda > 0, name='Lambda greater than zero')
+        model.addConstr(mu >= _np.sum(self.V), name='Mu greater equal to v_max')
+        
         model.setObjective(objective, GRB.MAXIMIZE)
 
         # stay silent
