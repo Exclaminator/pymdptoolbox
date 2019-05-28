@@ -141,7 +141,7 @@ class RobustIntervalModel(ValueIteration):
         # Itterate
         while True:
             self.iter += 1
-            self.sigma = self.computeSigma()
+            self.sigma = self.computeSigmaIntervalModel()
             self.v_next = _np.full(self.V.shape, _np.inf)
 
             # update value
@@ -168,7 +168,7 @@ class RobustIntervalModel(ValueIteration):
         #return policy
         self._endRun()
 
-    def computeSigma(self):
+    def computeSigmaIntervalModel(self):
         model = Model('SigmaIntervalMatrix')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         objective = LinExpr()
@@ -181,6 +181,24 @@ class RobustIntervalModel(ValueIteration):
         objective += _np.multiply(mu, (1 - _np.dot(self.p_lower,_np.ones(self.S, dtype=_np.float))))
         model.setObjective(objective, GRB.MINIMIZE)
         
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
+
+    def computeSigmaMaximumLikelihoodModel(self, state, action, beta):
+        model = Model('SigmaMaximumLikelihood')
+        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
+        lmbda = LinExpr()
+        lmbda += 1 / (_np.sum(self.P[action][state])/(mu - _np.sum(self.V)))
+        objective = LinExpr()
+        objective += mu
+        objective += - (1 + beta)*lmbda
+        for j in range(self.S):
+            objective += lmbda * self.P[action][state][j] * _np.log(lmbda*self.P[action][state][j] / (mu - self.V[j]))
+        model.setObjective(objective, GRB.MAXIMIZE)
+
         # stay silent
         model.setParam('OutputFlag', 0)
 
