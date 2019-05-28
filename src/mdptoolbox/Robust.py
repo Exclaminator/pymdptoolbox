@@ -64,23 +64,11 @@ class RobustIntervalModel(MDP):
                         _np.subtract(self.p_upper, self.p_lower),
                         _np.maximum(
                             _np.subtract(
-                                _np.multiply(
-                                    mu,
-                                    _np.ones(self.S, dtype=_np.float)
-                                ),
-                                self.V
-                            ),
-                            _np.zeros(self.S)
-                        )
-                    )
-
-        objective += _np.dot(
-                            self.V,
-                            self.p_upper)
-
-        objective += _np.multiply(
-                            mu,
-                            (1 - _np.dot(self.p_upper,_np.ones(self.S, dtype=_np.float))))
+                                _np.multiply(mu, _np.ones(self.S, dtype=_np.float)),
+                                self.V),
+                            _np.zeros(self.S)))
+        objective += _np.dot(self.V, self.p_upper)
+        objective += _np.multiply(mu, (1 - _np.dot(self.p_upper,_np.ones(self.S, dtype=_np.float))))
 
         model.setObjective(objective, GRB.MINIMIZE)
         model.optimize()
