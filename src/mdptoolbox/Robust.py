@@ -123,13 +123,22 @@ class RobustIntervalModel(ValueIteration):
     """
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, skip_check=False):
+                 max_iter=10, initial_value=0, beta = 1, skip_check=False):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
         # TODO add errors for wrong upper and lower bounds
+        if p_lower.shape == (self.S,):
+            p_lower = _np.repeat([_np.repeat([p_lower], self.S, axis=0)], self.A, axis=0)
+        if p_upper.shape == (self.S,):
+            p_upper = _np.repeat([_np.repeat([p_upper], self.S, axis=0)], self.A, axis=0)
+
+        assert p_lower.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
+        assert p_upper.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
+
         self.p_lower = p_lower
         self.p_upper = p_upper
+        self.beta = beta
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -141,12 +150,17 @@ class RobustIntervalModel(ValueIteration):
         # Itterate
         while True:
             self.iter += 1
-            self.sigma = self.computeSigmaIntervalModel()
-            self.v_next = _np.full(self.V.shape, _np.inf)
+            self.v_next = _np.full(self.V.shape, -_np.inf)
+
 
             # update value
             for s in range(self.S):
-                self.v_next[s] = _np.max(_np.transpose(self.R)[s])+self.discount*self.sigma
+                for a in range(self.A):
+                    self.sigma = self.computeSigmaIntervalModel(s, a)
+                    # notify user
+                    if self.verbose:
+                        _printVerbosity(self.iter, self.sigma)
+                    self.v_next[s] = max(self.v_next[s], self.R[a][s]+self.discount*self.sigma)
 
             # see if there is no more improvement
             if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
@@ -157,9 +171,6 @@ class RobustIntervalModel(ValueIteration):
             # update V
             self.V = self.v_next
 
-            # notify user
-            if self.verbose:
-                _printVerbosity(self.iter, self.sigma)
 
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
@@ -168,17 +179,17 @@ class RobustIntervalModel(ValueIteration):
         #return policy
         self._endRun()
 
-    def computeSigmaIntervalModel(self):
+    def computeSigmaIntervalModel(self, state, action):
         model = Model('SigmaIntervalMatrix')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         objective = LinExpr()
         objective += _np.dot(
-                        _np.subtract(self.p_upper, self.p_lower),
+                        _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
                         _np.maximum(
                             _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
                             _np.zeros(self.S)))
-        objective += _np.dot(self.V, self.p_lower)
-        objective += _np.multiply(mu, (1 - _np.dot(self.p_lower,_np.ones(self.S, dtype=_np.float))))
+        objective += _np.dot(self.V, self.p_lower[action][state])
+        objective += _np.multiply(mu, (1 - _np.dot(self.p_lower[action][state], _np.ones(self.S, dtype=_np.float))))
         model.setObjective(objective, GRB.MINIMIZE)
         
         # stay silent
@@ -187,20 +198,20 @@ class RobustIntervalModel(ValueIteration):
         model.optimize()
         return model.objVal
 
-    def computeSigmaMaximumLikelihoodModel(self, state, action, beta):
+    # non linear model, cannot be solved by Gurobi
+    def computeSigmaMaximumLikelihoodModel(self, state, action):
         model = Model('SigmaMaximumLikelihood')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        lmbda = LinExpr()
-        lmbda += 1 / (_np.sum(self.P[action][state])/(mu - _np.sum(self.V)))
+        lmbda = (mu - _np.sum(self.V)) / _np.sum(self.P[action][state])
         objective = LinExpr()
         objective += mu
-        objective += - (1 + beta)*lmbda
+        objective += - (1 + self.beta)*lmbda
         for j in range(self.S):
             objective += lmbda * self.P[action][state][j] * _np.log(lmbda*self.P[action][state][j] / (mu - self.V[j]))
 
         model.addConstr(lmbda > 0, name='Lambda greater than zero')
         model.addConstr(mu >= _np.sum(self.V), name='Mu greater equal to v_max')
-        
+
         model.setObjective(objective, GRB.MAXIMIZE)
 
         # stay silent
