@@ -152,7 +152,6 @@ class RobustIntervalModel(ValueIteration):
             self.iter += 1
             self.v_next = _np.full(self.V.shape, -_np.inf)
 
-
             # update value
             for s in range(self.S):
                 for a in range(self.A):
@@ -176,6 +175,7 @@ class RobustIntervalModel(ValueIteration):
         self.policy = _np.zeros(self.S, dtype=_np.int)
         for s in range(self.S):
             self.policy[s] = _np.argmax(_np.transpose(self.R)[s])
+
         #return policy
         self._endRun()
 
@@ -185,9 +185,11 @@ class RobustIntervalModel(ValueIteration):
         objective = LinExpr()
         objective += _np.dot(
                         _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
+                        # use _np.maximum(v,0) to implement positive part of vector v
                         _np.maximum(
                             _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
                             _np.zeros(self.S)))
+        # note: no transpose on self.V, (why) is that correct?
         objective += _np.dot(self.V, self.p_lower[action][state])
         objective += _np.multiply(mu, (1 - _np.dot(self.p_lower[action][state], _np.ones(self.S, dtype=_np.float))))
         model.setObjective(objective, GRB.MINIMIZE)

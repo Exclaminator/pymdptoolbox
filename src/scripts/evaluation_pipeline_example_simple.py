@@ -12,16 +12,15 @@ def simulate_forest_problem():
     # after a fire, the forest returns in its oldest state
     # after cutting, the forest is in the oldest state
     S = 10  # number of states
-    r1 = 20  # reward when 'wait' is performed in its oldest state
-    r2 = 20  # reward when 'cut' is performed in its oldest state
+    r1 = 40  # reward when 'wait' is performed in its oldest state
+    r2 = 1  # reward when 'cut' is performed in its oldest state
     p = 0.05  # probability of fire
     P, R = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
 
-    up_ratio = 2
-    down_ratio = 1/2
+    ambiguous_ratio = 2
 
-    p_up = np.full(S, p*up_ratio)
-    p_low = np.full(S, p*down_ratio)
+    p_up = P*ambiguous_ratio    #np.full(S, p*ambiguous_ratio)
+    p_low = P/ambiguous_ratio   #np.full(S, p/ambiguous_ratio)
 
     discount_factor = 0.9
     # epsilon = 0.01
@@ -58,9 +57,9 @@ def simulate_forest_problem():
     rewards_v2 = np.zeros(simulation_runs)
     rewards_v3 = np.zeros(simulation_runs)
     for i in range(simulation_runs):
-        rewards_v1[i] = run_policy_on_problem(v1.policy, t_max, P, R, p_up, p_low)
-        rewards_v2[i] = run_policy_on_problem(v2.policy, t_max, P, R, p_up, p_low)
-        rewards_v3[i] = run_policy_on_problem(v3.policy, t_max, P, R, p_up, p_low)
+        rewards_v1[i] = run_policy_on_robust_problem(v1.policy, t_max, P, R, p_up, p_low)
+        rewards_v2[i] = run_policy_on_robust_problem(v2.policy, t_max, P, R, p_up, p_low)
+        rewards_v3[i] = run_policy_on_robust_problem(v3.policy, t_max, P, R, p_up, p_low)
 
     print("v1, mean, variance, min_reward: "
           + str(np.mean(rewards_v1))+", "
@@ -77,18 +76,19 @@ def simulate_forest_problem():
     # todo: make plots that show the distribution of results
 
 
-def run_policy_on_problem(policy, t_max, P, R, p_up, p_low):
+def run_policy_on_robust_problem(policy, t_max, P, R, p_up, p_low):
     s = 0
     total_reward = 0
 
+    # P = np.random.uniform(p_low, p_up)
+
     for t in range(t_max):
         action = policy[s]
-        PP = P[action, s]
+        # simulate ambiguity: get transition probability based on the interval
+        PP = np.random.uniform(p_low[action, s], p_up[action, s])
 
-        # todo: include p_up and p_low in the simulation
-        pp_up = p_up[s]
-        pp_low = p_low[s]
-        # PP
+        # normalize to make sum = 1
+        PP = PP/sum(PP)
 
         s_new = np.random.choice(a=len(PP), p=PP)
         RR = R[s]
