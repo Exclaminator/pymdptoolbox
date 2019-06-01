@@ -155,7 +155,7 @@ class RobustIntervalModel(ValueIteration):
             # update value
             for s in range(self.S):
                 for a in range(self.A):
-                    self.sigma = self.computeSigmaIntervalModel(s, a)
+                    self.sigma = self.computeSigmaDualReductionGreg(s, a)
                     # notify user
                     if self.verbose:
                         _printVerbosity(self.iter, self.sigma)
@@ -189,7 +189,6 @@ class RobustIntervalModel(ValueIteration):
                         _np.maximum(
                             _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
                             _np.zeros(self.S)))
-        # note: no transpose on self.V, (why) is that correct?
         objective += _np.dot(self.V, self.p_lower[action][state])
         objective += _np.multiply(mu, (1 - _np.dot(self.p_lower[action][state], _np.ones(self.S, dtype=_np.float))))
         model.setObjective(objective, GRB.MINIMIZE)
@@ -199,6 +198,31 @@ class RobustIntervalModel(ValueIteration):
 
         model.optimize()
         return model.objVal
+
+    def computeSigmaDualReductionGreg(self, state, action):
+        model = Model('SigmaReductionGreg')
+        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
+        objective = LinExpr()
+        objective += -mu
+        objective += _np.dot(
+                        _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
+                        _np.maximum(
+                            _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
+                            _np.zeros(self.S))
+                    )
+        objective += _np.dot(
+                        self.p_upper[action][state],
+                        _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V)
+                    )
+
+        model.setObjective(objective, GRB.MINIMIZE)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
+
 
     # non linear model, cannot be solved by Gurobi
     def computeSigmaMaximumLikelihoodModel(self, state, action):
