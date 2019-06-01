@@ -29,9 +29,14 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
     # define problems to run on
     problem_list = create_problem_from_environment_description(options, environment)
 
+    # create log file
+    file_to_write = open(log_file, "w+")
+
     results_all = []
     # for each MDP
     for mdp_pair in mdp_pair_list:
+        file_to_write.write("\n"+str(mdp_pair)+"\n")
+
         result_mdp = []
         # run on all problems
         for problem in problem_list:
@@ -45,16 +50,18 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
                         mdp.policy, problem
                     )
                 )
-            result_mdp.append(result_problem)
+            # do evaluation on results for this mdp and log it
+            file_to_write.write(problem["problem_name"]+":\n")
+            file_to_write.write("policy: "+str(mdp.policy)+"\n")
+            file_to_write.write(str(evaluate_mdp_results(result_problem, options))+"\n")
 
-        # do evaluation on results for this mdp and log it
-        evaluated_results = evaluate_mdp_results(result_mdp, options)
-        write_to_log(evaluated_results, log_file)
+            result_mdp.append(result_problem)
 
         results_all.append(result_mdp)
 
     # If we want to do some evaluation over the total set of results, we should do that here
 
+    file_to_write.close()
     return results_all
 
 
@@ -110,7 +117,8 @@ def create_problem_from_environment_description(options_object, environment):
     #  create a list of problems that indicate what problems are used for evaluation
 
     # output should be a list of problems.
-    # P is the transition kernel, R the reward kernel, t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel
+    # P is the transition kernel, R the reward kernel,
+    # t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel
 
     environment_format = environment["format"]
     result = []
@@ -132,6 +140,7 @@ def create_problem_from_environment_description(options_object, environment):
                 P_var = _np.full(P.shape, 1)
                 problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
 
+            problem_to_add["problem_name"] = problem
             result.append(problem_to_add)
 
     return result
@@ -160,10 +169,10 @@ def create_mdp_from_dict(mdp_as_dict, problem):
     return mdp_out
 
 
-def create_options_object(options_raw):
-    # todo: create an options object that is easy to handle in python
-    # could have, for now we can just pass a dict object in run_multi
-    return {}
+# def create_options_object(options_raw):
+#     # todo: create an options object that is easy to handle in python
+#     # could have, for now we can just pass a dict object in run_multi
+#     return {}
 
 
 def evaluate_mdp_results(result_mdp, options):
@@ -172,14 +181,14 @@ def evaluate_mdp_results(result_mdp, options):
 
     average_reward = _np.mean(result_mdp)
     variance = _np.var(result_mdp)
-    minimal = _np.min(result_mdp)
+    lowest_value = _np.min(result_mdp)
 
-    return {}
+    return {
+        "average_value": average_reward,
+        "variance": variance,
+        "lowest_value": lowest_value
+    }
 
-
-def write_to_log(content, filename):
-    # todo: implement this method
-    return
 
 """
 Main code to run, which takes arguments and calls functions
@@ -192,7 +201,7 @@ Main code to run, which takes arguments and calls functions
 # log_file = args[4]
 # environment_description = args[5]
 
-#run_multi(mdp_pair_list, number_of_runs, options, log_file)
+# run_multi(mdp_pair_list, number_of_runs, options, log_file)
 
 # test with some default parameters
 run_multi(
@@ -202,13 +211,17 @@ run_multi(
             "parameters": {
                 "discount_factor": 0.9
             }
+        },
+        {
+            "type": "randomMdp",
+            "parameters": {}
         }
     ],
     number_of_runs=10,
     options={
         "t_max_def": 100
     },
-    log_file="logs/"+str(datetime.now())+".log",
+    log_file="../../logs/"+datetime.now().strftime('%Y%m%d-%H%M%S')+".log",
     environment={
         "format": "list",
         "problem_list": ["forest_default", "forest_risky"]
