@@ -211,7 +211,7 @@ class RobustIntervalModel(ValueIteration):
                             _np.zeros(self.S))
                     )
         objective += _np.dot(
-                        self.p_upper[action][state],
+                        self.p_lower[action][state],
                         _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V)
                     )
 
