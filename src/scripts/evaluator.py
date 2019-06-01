@@ -1,6 +1,9 @@
 import sys
+from datetime import datetime
 import mdp_base
-import numpy as np
+import mdptoolbox.example
+import mdptoolbox.Robust
+import numpy as _np
 """
 Version 1:
 
@@ -34,14 +37,12 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
         for problem in problem_list:
             result_problem = []
             # instantiate mdp
-            mdp = create_mdp_from_pair(mdp_pair, problem["P"], problem["R"])
+            mdp = create_mdp_from_dict(mdp_pair, problem)
             # simulate some number of time
             for ii in range(number_of_runs):
                 result_problem.append(
                     run_policy_on_problem(
-                        mdp.policy, problem["P"],
-                        problem["R"],
-                        problem["t_max"]
+                        mdp.policy, problem
                     )
                 )
             result_mdp.append(result_problem)
@@ -65,14 +66,29 @@ R: reward kernel
 """
 
 
-def run_policy_on_problem(policy, t_max, P, R):
+def run_policy_on_problem(policy, problem):
     s = 0
     total_reward = 0
 
+    P = problem["P"]
+    P_var = problem["P_var"]
+    P_std = _np.sqrt(P_var)
+    t_max = problem["t_max"]
+    R = problem["R"]
+
     for t in range(t_max):
         action = policy[s]
-        PP = P[action, s]
-        s_new = np.random.choice(a=len(PP), p=PP)
+
+        # simulate ambiguity: simulate a transition probability based on the variance
+        # we use a normal distribution for now, but we might want to consider other distributions
+        probs = _np.random.normal(P[action, s], P_std[action, s])
+        # we can't have a negative probabilities, so we take the absolute value
+        PP = _np.absolute(probs, _np.zeros(P[action, s].shape))
+
+        # normalize to make sum = 1
+        PP2 = PP/sum(PP)
+
+        s_new = _np.random.choice(a=len(PP2), p=PP2)
         RR = R[s]
         total_reward += RR[action]
         s = s_new
@@ -80,52 +96,122 @@ def run_policy_on_problem(policy, t_max, P, R):
     return total_reward
 
 
-def create_problem_from_environment_description(options, environment):
+def computeIntervalByVariance(P, P_var):
+    # we do so by assuming the variance corresponds to an uniform distribution.
+    # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
+    # var(X) = (b - a)^2 / 12
+    # mu(X) = (a+b) / 2
+    # todo: compute a and b given mu and var, i.e. replace P with a and b
+    return {"p_up": P, "p_low": P}
+
+
+def create_problem_from_environment_description(options_object, environment):
     # todo: based on the options and environments,
     #  create a list of problems that indicate what problems are used for evaluation
 
-    # output should be a list of (P, R) pairs, where P is the transition kernel and R the reward kernel
-    return [{"P": -1, "R": -1, "t_max": -1}, {"P": -2, "R": -2, "t_max": -2}]
+    # output should be a list of problems.
+    # P is the transition kernel, R the reward kernel, t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel
+
+    environment_format = environment["format"]
+    result = []
+
+    if environment_format == "list":
+        for problem in environment["problem_list"]:
+            problem_to_add = {}
+            if problem == "forest_default":
+                P, R = mdptoolbox.example.forest()
+                P_var = _np.full(P.shape, 0.5)
+                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+
+            elif problem == "forest_risky":
+                S = 10  # number of states
+                r1 = 40  # reward when 'wait' is performed in its oldest state
+                r2 = 1  # reward when 'cut' is performed in its oldest state
+                p = 0.05  # probability of fire
+                P, R = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
+                P_var = _np.full(P.shape, 1)
+                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+
+            result.append(problem_to_add)
+
+    return result
 
 
 """
-Function that creates the corresponding mdp given a (mdptype, parameters) pair
+Function that creates the corresponding mdp
 """
 
 
-def create_mdp_from_pair(pair, problem):
-    mdp_type = pair[0]
-    mdp_parameters = pair[1]
+def create_mdp_from_dict(mdp_as_dict, problem):
+    mdp_type = mdp_as_dict["type"]
+    mdp_parameters = mdp_as_dict["parameters"]
 
+    mdp_out = None
     # todo: create mdp object given its type and parameters
-    # look at https://stackoverflow.com/questions/452969/does-python-have-an-equivalent-to-java-class-forname
-    return mdp_base.RandomMdp(problem["P"], problem["R"], None, None, None, None)
+    if mdp_type == "randomMdp":
+        mdp_out = mdp_base.RandomMdp(problem["P"], problem["R"], None, None, None, None)
+    elif mdp_type == "robustInterval":
+        interval = computeIntervalByVariance(problem["P"], problem["P_var"])
+        mdp_out = mdptoolbox.Robust.RobustIntervalModel(
+            problem["P"], problem["R"], discount=mdp_parameters["discount_factor"],
+            p_lower=interval["p_low"], p_upper=interval["p_up"])
+
+    mdp_out.run()
+    return mdp_out
 
 
 def create_options_object(options_raw):
     # todo: create an options object that is easy to handle in python
-    # I think we should use dict for this
+    # could have, for now we can just pass a dict object in run_multi
     return {}
 
 
 def evaluate_mdp_results(result_mdp, options):
     # todo: take the results and make some sens out of it
     # what we want to retrieve should be defined in the options
+
+    average_reward = _np.mean(result_mdp)
+    variance = _np.var(result_mdp)
+    minimal = _np.min(result_mdp)
+
     return {}
 
 
 def write_to_log(content, filename):
     # todo: implement this method
+    return
 
 """
 Main code to run, which takes arguments and calls functions
 """
 # first argument is script filename, so we skip that one
-args = sys.argv
-mdp_pair_list = args[1]
-number_of_runs = args[2]
-options = args[3]
-log_file = args[4]
-environment_description = args[5]
+# args = sys.argv
+# mdp_pair_list = args[1]
+# number_of_runs = args[2]
+# options = args[3]
+# log_file = args[4]
+# environment_description = args[5]
 
-run_multi(mdp_pair_list, number_of_runs, options, log_file)
+#run_multi(mdp_pair_list, number_of_runs, options, log_file)
+
+# test with some default parameters
+run_multi(
+    mdp_pair_list=[
+        {
+            "type": "robustInterval",
+            "parameters": {
+                "discount_factor": 0.9
+            }
+        }
+    ],
+    number_of_runs=10,
+    options={
+        "t_max_def": 100
+    },
+    log_file="logs/"+str(datetime.now())+".log",
+    environment={
+        "format": "list",
+        "problem_list": ["forest_default", "forest_risky"]
+    }
+)
+
