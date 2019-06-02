@@ -57,7 +57,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
             # save a plot to the figure folder
             if ~plot_disabled:
-                description = problem["problem_name"]+"_"+mdp_pair["type"]
+                description = problem["problem_name"]+"-"+mdp_pair["type"]
 
                 sns.distplot(result_problem)
                 pyplot.title(description)
@@ -70,7 +70,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
         results_all.append(result_mdp)
 
-    # If we want to do some evaluation over the total set of results, we should do that here
+    # If we want to do some evaluation over the total set of results we can do that here
 
     file_to_write.close()
     return results_all
@@ -115,7 +115,7 @@ def run_policy_on_problem(policy, problem):
     return total_reward
 
 
-def compute_interval_by_variance(P, P_var):
+def compute_interval_by_variance(P, P_var, z=3):
     # we do so by assuming the variance corresponds to an uniform distribution.
     # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
     # var(X) = (b - a)^2 / 12
@@ -123,7 +123,7 @@ def compute_interval_by_variance(P, P_var):
     # doing some algebra gives us
     # b = mu + \sqrt(3*var)
     # a = mu - \sqrt(3*var)
-    sqrt3var = _np.sqrt(3*P_var)
+    sqrt3var = _np.sqrt(z*P_var)
 
     return {"p_up": P + sqrt3var, "p_low": P - sqrt3var}
 
@@ -132,50 +132,65 @@ def create_problem_list(options_object, problems_dict):
     # create a list of problems that indicate what problems are used for evaluation.
     # output should be a list of problems.
     # P is the transition kernel, R the reward kernel,
-    # t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel.
+    # t_max how many steps are taken,
+    # P_var the variance (uncertainty) of the true transition kernel.
 
     environment_format = problems_dict["format"]
     result = []
 
     if environment_format == "list":
         for problem in problems_dict["list"]:
-            problem_to_add = {}
-            if problem == "forest_default":
+            problem_type = problem["type"]
+            problem_parameters = retrieve_from_dict(problem, "parameters", {})
+
+            problem_to_add = {
+                "problem_name": problem_type,
+                "parameters": problem_parameters
+            }
+
+            if problem_type == "forest_default":
                 P, R = mdptoolbox.example.forest()
-                P_var = _np.full(P.shape, 0.5)
-                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+                variance = retrieve_from_dict(problem_parameters, "variance", 0.05)
+                P_var = _np.full(P.shape, variance)
+                problem_to_add.update({"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]})
 
-            elif problem == "forest_risky":
-                S = 10  # number of states
-                r1 = 40  # reward when 'wait' is performed in its oldest state
-                r2 = 1  # reward when 'cut' is performed in its oldest state
-                p = 0.05  # probability of fire
+            elif problem_type == "forest":
+                # number of states
+                S = retrieve_from_dict(problem_parameters, "S", 10)
+                # reward when 'wait' is performed in its oldest state
+                r1 = retrieve_from_dict(problem_parameters, "r1", 40)
+                # reward when 'cut' is performed in its oldest state
+                r2 = retrieve_from_dict(problem_parameters, "r2", 1)
+                # probability of fire
+                p = retrieve_from_dict(problem_parameters, "p", 0.05)
+                variance = retrieve_from_dict(problem_parameters, "variance", 0.05)
+
                 P, R = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
-                P_var = _np.full(P.shape, 1)
-                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+                # S x A -> A x S x S'
+                R = _np.transpose(R)
+                R = _np.repeat(R[:, :, _np.newaxis], R.shape[1], axis=2)
 
-            elif problem == "random_robust_mdp_dense":
+                P_var = _np.full(P.shape, variance)
+                problem_to_add.update({"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]})
+
+            elif problem_type == "random_highest_p":
                 # create random mdp
-                # only add uncertainty to most probable event for each state-action
-                S = 50
-                A = 13
-                uncertainty = 0.10
+                # adds uncertainty to most probable event for each state-action
+                S = retrieve_from_dict(problem_parameters, "S", 10)
+                A = retrieve_from_dict(problem_parameters, "A", 3)
+                variance = retrieve_from_dict(problem_parameters, "variance", 0.05)
                 P, R = mdptoolbox.example.rand(S, A, is_sparse=False)
-                # A x S x S'
-
-                # A x S i
                 # most probable event per action, state
                 P_argmax = _np.argmax(P, 2)
                 P_var = _np.zeros(P.shape)
 
                 for action_index in range(A):
                     for state_index in range(S):
-                        P_var[action_index, state_index, P_argmax[action_index, state_index]] = uncertainty
+                        P_var[action_index, state_index, P_argmax[action_index, state_index]] = variance
 
                 # add to set
-                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+                problem_to_add.update({"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]})
 
-            problem_to_add["problem_name"] = problem
             result.append(problem_to_add)
 
     return result
@@ -189,10 +204,10 @@ def air_conditioning_problem():
     x = _np.ones([1, stages])
     # control input
     u = _np.ones([1, stages])
-    # disturbance
+    # disturbance, drawn from N(2,0.2)
     w = _np.random.normal(2, 0.2, stages)
 
-    # discount_factor = 0.95
+    # (how to get k ???)
     # x[t+1] = k * x[t] + (1 - k)*(Theta - eta * R * P * u[t]) + w[t]
     # r1(s) = w - exp(s - s_opt) * np.ones(1 where s >= s_opt, else 0)
     #         - exp(s_opt - s) * np.ones(1 where s <= s_opt, else 0)
@@ -202,7 +217,7 @@ def air_conditioning_problem():
     # from the paper:
     # The samples of the transition probability vectors are constructed by adding a normally distributed random
     # variable with a mean of 0.05 and a standard deviation of 0.01 to the largest element of each column of
-    # the original transition probability matrix
+    # the original transition probability matrix <- see random_robust_mdp for a similar implementation
 
 
 """
@@ -217,7 +232,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
     R = problem["R"]
 
     # not quite sure whether we should include discount factor as part of the problem, or as part of the mdp
-    # I chose "as part of the mdp" for now
+    # I choose "as part of the mdp" for now
     discount_factor = retrieve_from_dict(mdp_hyperparameters, "discount_factor", 0.9)
 
     mdp_out = None
@@ -225,7 +240,9 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
     if mdp_type == "randomMdp":
         mdp_out = mdp_base.RandomMdp(P, R, None, None, None, None)
     elif mdp_type == "robustInterval":
-        interval = compute_interval_by_variance(P, problem["P_var"])
+        interval = compute_interval_by_variance(
+            P, problem["P_var"], retrieve_from_dict(mdp_hyperparameters, "z", 3)
+        )
         mdp_out = mdptoolbox.Robust.RobustIntervalModel(
             P, R, discount=discount_factor,
             p_lower=interval["p_low"], p_upper=interval["p_up"])
@@ -237,7 +254,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
 
 
 def evaluate_mdp_results(result_mdp, options):
-    # ake the results + options object and define how we want to log
+    # take the results + options object to define how we want to log
 
     logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
 
@@ -279,13 +296,16 @@ run_multi(
         {
             "type": "robustInterval",
             "parameters": {
-                "discount_factor": 0.9
+                "discount_factor": 0.9,
+                # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
+                # By default z=3 (corresponds to a uniform distribution)
+                "sigma_interval_factor": 3
             }
         },
-        {
-            "type": "randomMdp",
-            "parameters": {}
-        },
+        # {
+        #     "type": "randomMdp",
+        #     "parameters": {}
+        # },
         {
             "type": "valueIteration",
             "parameters": {}
@@ -296,14 +316,27 @@ run_multi(
         "t_max_def": 100,
         "save_figures": True,
         "logging_behavior": "default",
-        # "log_filename": "dsadsa"
+        # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
         "plot_disabled": False,
     },
     problems_dict={
         "format": "list",
         # "list": ["forest_default", "forest_risky"],
-        "list": ["random_robust_mdp_dense"],
+        "list": [
+            {
+                "type": "random_highest_p",
+                "parameters": {
+                    "S": 10,
+                    "A": 5,
+                    "variance": 0.05
+                }
+            },
+            {
+                "type": "forest",
+                "parameters": {}
+            }
+        ],
     }
 )
 
