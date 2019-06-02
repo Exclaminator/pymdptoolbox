@@ -107,7 +107,8 @@ def run_policy_on_problem(policy, problem):
         PP2 = PP/sum(PP)
 
         s_new = _np.random.choice(a=len(PP2), p=PP2)
-        RR = R[s]
+        # R is in format A x S x S'
+        RR = R[:, s, s_new]
         total_reward += RR[action]
         s = s_new
 
@@ -153,10 +154,55 @@ def create_problem_list(options_object, problems_dict):
                 P_var = _np.full(P.shape, 1)
                 problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
 
+            elif problem == "random_robust_mdp_dense":
+                # create random mdp
+                # only add uncertainty to most probable event for each state-action
+                S = 50
+                A = 13
+                uncertainty = 0.10
+                P, R = mdptoolbox.example.rand(S, A, is_sparse=False)
+                # A x S x S'
+
+                # A x S i
+                # most probable event per action, state
+                P_argmax = _np.argmax(P, 2)
+                P_var = _np.zeros(P.shape)
+
+                for action_index in range(A):
+                    for state_index in range(S):
+                        P_var[action_index, state_index, P_argmax[action_index, state_index]] = uncertainty
+
+                # add to set
+                problem_to_add = {"P": P, "R": R, "P_var": P_var, "t_max": options_object["t_max_def"]}
+
             problem_to_add["problem_name"] = problem
             result.append(problem_to_add)
 
     return result
+
+
+def air_conditioning_problem():
+    # todo: implement this method
+    stages = 10
+
+    # indoor temperature
+    x = _np.ones([1, stages])
+    # control input
+    u = _np.ones([1, stages])
+    # disturbance
+    w = _np.random.normal(2, 0.2, stages)
+
+    # discount_factor = 0.95
+    # x[t+1] = k * x[t] + (1 - k)*(Theta - eta * R * P * u[t]) + w[t]
+    # r1(s) = w - exp(s - s_opt) * np.ones(1 where s >= s_opt, else 0)
+    #         - exp(s_opt - s) * np.ones(1 where s <= s_opt, else 0)
+    # r2(a) = - ca (models the cost of air conditioning)
+    # r[t,s,a] = 0.95^t * (r1[s] + n(2000, 200) * r2(a)
+
+    # from the paper:
+    # The samples of the transition probability vectors are constructed by adding a normally distributed random
+    # variable with a mean of 0.05 and a standard deviation of 0.01 to the largest element of each column of
+    # the original transition probability matrix
 
 
 """
@@ -249,14 +295,15 @@ run_multi(
     options={
         "t_max_def": 100,
         "save_figures": True,
-        "logging_behavior": "Default",
+        "logging_behavior": "default",
         # "log_filename": "dsadsa"
-        #"figure_save_path": "../../figures"
-        "plot_disabled": False
+        # "figure_save_path": "../../figures"
+        "plot_disabled": False,
     },
     problems_dict={
         "format": "list",
-        "list": ["forest_default", "forest_risky"]
+        # "list": ["forest_default", "forest_risky"],
+        "list": ["random_robust_mdp_dense"],
     }
 )
 
