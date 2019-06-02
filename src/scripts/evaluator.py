@@ -9,22 +9,9 @@ from matplotlib import pyplot
 import seaborn as sns
 
 """
-Version 1:
-
-We don't consider tweaking parameters.
-
-Input:
-- list of mdp-type's and their corresponding hyperparameters.
-- An integer, indicating how many runs we want to do.
-- Options: list of keywords that indicate what metrics are outputted.
-- log_file: where to write our found results to. 
-    Default: timestamp + current folder
-- Environment: problem we want to test on, given by some keyword. 
-    Default: behavior will be based on the options given, i.e. what we want to measure
-
-Output:
-- depends on 'Options'
-
+MDP-multi evaluation tool.
+Creates a list of mdp's and problems. Then runs each mdp-problem combination a fixed number of times.
+Can save figures and log results
 """
 
 
