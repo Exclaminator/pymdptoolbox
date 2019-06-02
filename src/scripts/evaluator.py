@@ -1,9 +1,13 @@
 import sys
+import os
 from datetime import datetime
 import mdp_base
 import mdptoolbox.example
 import mdptoolbox.Robust
 import numpy as _np
+from matplotlib import pyplot
+import seaborn as sns
+
 """
 Version 1:
 
@@ -24,13 +28,25 @@ Output:
 """
 
 
-def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
+def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
     # define problems to run on
-    problem_list = create_problem_from_environment_description(options, environment)
+    problem_list = create_problem_list(options, problems_dict)
+    timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+    # retrieve variables from options file
+    log_filename = options["log_filename"] if "log_filename" in options \
+        else "../../logs/"+timestamp+".log"
+
+    figure_path = options["figure_path"] if "figure_path" in options \
+        else "../../logs/"+timestamp+"_fig/"
+
+    os.mkdir(figure_path)
+
+    plot_disabled = options["plot_disabled"] if "plot_disabled" in options else False
 
     # create log file
-    file_to_write = open(log_file, "w+")
+    file_to_write = open(log_filename, "w+")
 
     results_all = []
     # for each MDP
@@ -54,6 +70,17 @@ def run_multi(mdp_pair_list, number_of_runs, options, log_file, environment):
             file_to_write.write(problem["problem_name"]+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
             file_to_write.write(str(evaluate_mdp_results(result_problem, options))+"\n")
+
+            # save a plot to the figure folder
+            if ~plot_disabled:
+                description = problem["problem_name"]+"_"+mdp_pair["type"]
+
+                sns.distplot(result_problem)
+                pyplot.title(description)
+                pyplot.xlabel("Value")
+                pyplot.ylabel("Frequency")
+                pyplot.savefig(figure_path+description+".png", dpi=150, format="png")
+                pyplot.close()
 
             result_mdp.append(result_problem)
 
@@ -108,23 +135,25 @@ def computeIntervalByVariance(P, P_var):
     # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
     # var(X) = (b - a)^2 / 12
     # mu(X) = (a+b) / 2
-    # todo: compute a and b given mu and var, i.e. replace P with a and b
-    return {"p_up": P, "p_low": P}
+    # doing some algebra gives us
+    # b = mu + \sqrt(3*var)
+    # a = mu - \sqrt(3*var)
+    sqrt3var = _np.sqrt(3*P_var)
+
+    return {"p_up": P + sqrt3var, "p_low": P - sqrt3var}
 
 
-def create_problem_from_environment_description(options_object, environment):
-    # todo: based on the options and environments,
-    #  create a list of problems that indicate what problems are used for evaluation
-
+def create_problem_list(options_object, problems_dict):
+    # create a list of problems that indicate what problems are used for evaluation.
     # output should be a list of problems.
     # P is the transition kernel, R the reward kernel,
-    # t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel
+    # t_max how many steps are taken, P_var the variance (uncertainty) of the true transition kernel.
 
-    environment_format = environment["format"]
+    environment_format = problems_dict["format"]
     result = []
 
     if environment_format == "list":
-        for problem in environment["problem_list"]:
+        for problem in problems_dict["list"]:
             problem_to_add = {}
             if problem == "forest_default":
                 P, R = mdptoolbox.example.forest()
@@ -169,12 +198,6 @@ def create_mdp_from_dict(mdp_as_dict, problem):
     return mdp_out
 
 
-# def create_options_object(options_raw):
-#     # todo: create an options object that is easy to handle in python
-#     # could have, for now we can just pass a dict object in run_multi
-#     return {}
-
-
 def evaluate_mdp_results(result_mdp, options):
     # todo: take the results and make some sens out of it
     # what we want to retrieve should be defined in the options
@@ -217,14 +240,17 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=10,
+    number_of_runs=100,
     options={
-        "t_max_def": 100
+        "t_max_def": 100,
+        "save_figures": True,
+        # "log_filename": "dsadsa"
+        #"figure_save_path": "../../figures"
+        "plot_disabled": False
     },
-    log_file="../../logs/"+datetime.now().strftime('%Y%m%d-%H%M%S')+".log",
-    environment={
+    problems_dict={
         "format": "list",
-        "problem_list": ["forest_default", "forest_risky"]
+        "list": ["forest_default", "forest_risky"]
     }
 )
 
