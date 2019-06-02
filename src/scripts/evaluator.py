@@ -35,15 +35,12 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
 
     # retrieve variables from options file
-    log_filename = options["log_filename"] if "log_filename" in options \
-        else "../../logs/"+timestamp+".log"
+    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default="../../logs/" + timestamp + ".log")
+    figure_path = retrieve_from_dict(options, "figure_path", "../../logs/" + timestamp + "_fig/")
+    plot_disabled = retrieve_from_dict(options, "plot_disabled", False)
 
-    figure_path = options["figure_path"] if "figure_path" in options \
-        else "../../logs/"+timestamp+"_fig/"
-
-    os.mkdir(figure_path)
-
-    plot_disabled = options["plot_disabled"] if "plot_disabled" in options else False
+    if ~plot_disabled:
+        os.mkdir(figure_path)
 
     # create log file
     file_to_write = open(log_filename, "w+")
@@ -58,7 +55,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         for problem in problem_list:
             result_problem = []
             # instantiate mdp
-            mdp = create_mdp_from_dict(mdp_pair, problem)
+            mdp = create_mdp_from_dict(mdp_pair, problem, options)
             # simulate some number of time
             for ii in range(number_of_runs):
                 result_problem.append(
@@ -130,7 +127,7 @@ def run_policy_on_problem(policy, problem):
     return total_reward
 
 
-def computeIntervalByVariance(P, P_var):
+def compute_interval_by_variance(P, P_var):
     # we do so by assuming the variance corresponds to an uniform distribution.
     # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
     # var(X) = (b - a)^2 / 12
@@ -180,37 +177,54 @@ Function that creates the corresponding mdp
 """
 
 
-def create_mdp_from_dict(mdp_as_dict, problem):
+def create_mdp_from_dict(mdp_as_dict, problem, options):
     mdp_type = mdp_as_dict["type"]
-    mdp_parameters = mdp_as_dict["parameters"]
+    mdp_hyperparameters = mdp_as_dict["parameters"]
+    P = problem["P"]
+    R = problem["R"]
+
+    # not quite sure whether we should include discount factor as part of the problem, or as part of the mdp
+    # I chose "as part of the mdp" for now
+    discount_factor = retrieve_from_dict(mdp_hyperparameters, "discount_factor", 0.9)
 
     mdp_out = None
-    # todo: create mdp object given its type and parameters
+    # define mdp_out based on the type and any hyperparameters
     if mdp_type == "randomMdp":
-        mdp_out = mdp_base.RandomMdp(problem["P"], problem["R"], None, None, None, None)
+        mdp_out = mdp_base.RandomMdp(P, R, None, None, None, None)
     elif mdp_type == "robustInterval":
-        interval = computeIntervalByVariance(problem["P"], problem["P_var"])
+        interval = compute_interval_by_variance(P, problem["P_var"])
         mdp_out = mdptoolbox.Robust.RobustIntervalModel(
-            problem["P"], problem["R"], discount=mdp_parameters["discount_factor"],
+            P, R, discount=discount_factor,
             p_lower=interval["p_low"], p_upper=interval["p_up"])
+    elif mdp_type == "valueIteration":
+        mdp_out = mdptoolbox.mdp.ValueIteration(P, R, discount=discount_factor)
 
     mdp_out.run()
     return mdp_out
 
 
 def evaluate_mdp_results(result_mdp, options):
-    # todo: take the results and make some sens out of it
-    # what we want to retrieve should be defined in the options
+    # ake the results + options object and define how we want to log
+
+    logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
 
     average_reward = _np.mean(result_mdp)
     variance = _np.var(result_mdp)
     lowest_value = _np.min(result_mdp)
 
-    return {
-        "average_value": average_reward,
-        "variance": variance,
-        "lowest_value": lowest_value
-    }
+    # define logging behavior here
+    # maybe add "verbose" or "minimal" etc.
+    if logging_behavior == "default":
+        return {
+            "average_value": average_reward,
+            "variance": variance,
+            "lowest_value": lowest_value
+        }
+    return {}
+
+
+def retrieve_from_dict(dictionary, field, default):
+    return dictionary[field] if field in dictionary else default
 
 
 """
@@ -238,12 +252,17 @@ run_multi(
         {
             "type": "randomMdp",
             "parameters": {}
+        },
+        {
+            "type": "valueIteration",
+            "parameters": {}
         }
     ],
     number_of_runs=100,
     options={
         "t_max_def": 100,
         "save_figures": True,
+        "logging_behavior": "Default",
         # "log_filename": "dsadsa"
         #"figure_save_path": "../../figures"
         "plot_disabled": False
