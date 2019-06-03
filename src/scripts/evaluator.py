@@ -21,13 +21,15 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     problem_list = create_problem_list(options, problems_dict)
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
 
+    # if not exists create folder
+    log_folder = "../../logs/"
+
     # retrieve variables from options file
-    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default="../../logs/" + timestamp + ".log")
-    figure_path = retrieve_from_dict(options, "figure_path", "../../logs/" + timestamp + "_fig/")
+    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default=log_folder + timestamp + ".log")
+    figure_path = retrieve_from_dict(options, "figure_path", log_folder + timestamp + "_fig/")
     plot_disabled = retrieve_from_dict(options, "plot_disabled", False)
 
-    if ~plot_disabled:
-        os.mkdir(figure_path)
+    os.makedirs(figure_path)
 
     # create log file
     file_to_write = open(log_filename, "w+")
@@ -117,15 +119,13 @@ def run_policy_on_problem(policy, problem):
 
 def compute_interval_by_variance(P, P_var, z=3):
     # we do so by assuming the variance corresponds to an uniform distribution.
-    # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
     # var(X) = (b - a)^2 / 12
     # mu(X) = (a+b) / 2
     # doing some algebra gives us
     # b = mu + \sqrt(3*var)
     # a = mu - \sqrt(3*var)
-    sqrt3var = _np.sqrt(z*P_var)
-
-    return {"p_up": P + sqrt3var, "p_low": P - sqrt3var}
+    sqrt_z_var = _np.sqrt(z*P_var)
+    return {"p_up": P + sqrt_z_var, "p_low": P - sqrt_z_var}
 
 
 def create_problem_list(options_object, problems_dict):
@@ -254,14 +254,16 @@ def air_conditioning_problem():
     # todo: (for later) create a continuous version instead of a fixed one,
     #  such that we can do simulation based upon calling functions
     # fixed time horizon
-    T = 10
+    # we can set it to 1 to simulate only computing the next action to take (right?)
+    T = 1
     t = range(T)
     # fixed set of temperatures
     s = _np.arange(18, 23, 0.1)
     # indoor temperature
     x = _np.ones([1, T])
     # control input
-    # we can either wait (0) or start air conditioning (1)
+    # a discrete version would be that we can either wait (0) or start air conditioning (1)
+    # a continuous version would have a target temperature
     u = _np.array([0, 1])
     # disturbance, drawn from N(2, 0.2)
     w = _np.random.normal(2, 0.2, T)
@@ -288,9 +290,8 @@ def air_conditioning_problem():
                 _np.power(discount_factor, t),
                 r1[ii] + _np.multiply(_np.random.normal(2000, 200), _np.multiply(u[i], r_wait))
             )
-            # repeat over all states
-            rr = _np.repeat(reward_found[:, _np.newaxis], S, axis=1)
-            # todo, find out whether rr is S x T or T x S and transpose if necessary
+            # repeat over all states to get S x T matrix
+            rr = _np.repeat(reward_found[_np.newaxis, :], S, axis=0)
             R[i, ii, :, :] = rr
 
     # todo: define p
