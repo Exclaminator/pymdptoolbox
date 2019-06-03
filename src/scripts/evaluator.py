@@ -196,30 +196,6 @@ def create_problem_list(options_object, problems_dict):
     return result
 
 
-def air_conditioning_problem():
-    # todo: implement this method
-    stages = 10
-
-    # indoor temperature
-    x = _np.ones([1, stages])
-    # control input
-    u = _np.ones([1, stages])
-    # disturbance, drawn from N(2,0.2)
-    w = _np.random.normal(2, 0.2, stages)
-
-    # (how to get k ???)
-    # x[t+1] = k * x[t] + (1 - k)*(Theta - eta * R * P * u[t]) + w[t]
-    # r1(s) = w - exp(s - s_opt) * np.ones(1 where s >= s_opt, else 0)
-    #         - exp(s_opt - s) * np.ones(1 where s <= s_opt, else 0)
-    # r2(a) = - ca (models the cost of air conditioning)
-    # r[t,s,a] = 0.95^t * (r1[s] + n(2000, 200) * r2(a)
-
-    # from the paper:
-    # The samples of the transition probability vectors are constructed by adding a normally distributed random
-    # variable with a mean of 0.05 and a standard deviation of 0.01 to the largest element of each column of
-    # the original transition probability matrix <- see random_robust_mdp for a similar implementation
-
-
 """
 Function that creates the corresponding mdp
 """
@@ -271,6 +247,65 @@ def evaluate_mdp_results(result_mdp, options):
             "lowest_value": lowest_value
         }
     return {}
+
+
+def air_conditioning_problem():
+    # todo: implement this method
+    # todo: (for later) create a continuous version instead of a fixed one,
+    #  such that we can do simulation based upon calling functions
+    # fixed time horizon
+    T = 10
+    t = range(T)
+    # fixed set of temperatures
+    s = _np.arange(18, 23, 0.1)
+    # indoor temperature
+    x = _np.ones([1, T])
+    # control input
+    # we can either wait (0) or start air conditioning (1)
+    u = _np.array([0, 1])
+    # disturbance, drawn from N(2, 0.2)
+    w = _np.random.normal(2, 0.2, T)
+    # our optimal temperature
+    s_opt = 20.5
+    s_more_opt = s >= s_opt
+
+    r1 = _np.random.normal(2, 0.2, len(s))\
+        - _np.multiply(_np.exp(s - s_opt), s_more_opt)\
+        - _np.multiply(_np.exp(s_opt - s), ~s_more_opt)
+
+    discount_factor = 0.95
+    # reward of not switching AC on
+    r_wait = 0.01
+
+    A = len(u)
+    S = len(s)
+
+    # construct reward function
+    R = _np.zeros([A, S, S, T])
+    for i in range(A):
+        for ii in range(S):
+            reward_found = _np.cross(
+                _np.power(discount_factor, t),
+                r1[ii] + _np.multiply(_np.random.normal(2000, 200), _np.multiply(u[i], r_wait))
+            )
+            # repeat over all states
+            rr = _np.repeat(reward_found[:, _np.newaxis], S, axis=1)
+            # todo, find out whether rr is S x T or T x S and transpose if necessary
+            R[i, ii, :, :] = rr
+
+    # todo: define p
+    P = _np.zeros([A, S, S, T])
+
+    # x[t+1] = k * x[t] + (1 - k)*(Theta - eta * R * P * u[t]) + w[t]
+    # r1(s) = w - exp(s - s_opt) * np.ones(1 where s >= s_opt, else 0)
+    #         - exp(s_opt - s) * np.ones(1 where s <= s_opt, else 0)
+    # r2(a) = - ca (models the cost of air conditioning)
+    # r[t,s,a] = 0.95^t * (r1[s] + n(2000, 200) * r2(a)
+
+    # from the paper:
+    # The samples of the transition probability vectors are constructed by adding a normally distributed random
+    # variable with a mean of 0.05 and a standard deviation of 0.01 to the largest element of each column of
+    # the original transition probability matrix <- see random_robust_mdp for a similar implementation
 
 
 def retrieve_from_dict(dictionary, field, default):
