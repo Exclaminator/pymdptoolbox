@@ -1,6 +1,7 @@
+import scipy as sp
+
 import mdptoolbox.example
 import numpy as np
-import mdp_base
 import mdptoolbox.Robust
 
 
@@ -57,9 +58,9 @@ def simulate_forest_problem():
     rewards_v2 = np.zeros(simulation_runs)
     rewards_v3 = np.zeros(simulation_runs)
     for i in range(simulation_runs):
-        rewards_v1[i] = run_policy_on_robust_problem(v1.policy, t_max, P, R, p_up, p_low)
-        rewards_v2[i] = run_policy_on_robust_problem(v2.policy, t_max, P, R, p_up, p_low)
-        rewards_v3[i] = run_policy_on_robust_problem(v3.policy, t_max, P, R, p_up, p_low)
+        rewards_v1[i] = run_policy_on_robust_problem(v1.policy, t_max, P, R, p_up, p_low, S, discount_factor)
+        rewards_v2[i] = run_policy_on_robust_problem(v2.policy, t_max, P, R, p_up, p_low, S, discount_factor)
+        rewards_v3[i] = run_policy_on_robust_problem(v3.policy, t_max, P, R, p_up, p_low, S, discount_factor)
 
     print("v1, mean, variance, min_reward: "
           + str(np.mean(rewards_v1))+", "
@@ -76,7 +77,13 @@ def simulate_forest_problem():
     # todo: make plots that show the distribution of results
 
 
-def run_policy_on_robust_problem(policy, t_max, P, R, p_up, p_low):
+def run_policy_on_robust_problem(policy, t_max, P, R, p_up, p_low, S, discount_factor):
+    P = np.random.uniform(p_low, p_up)
+    totalProbs = P.sum(axis=2)
+    Pnew = P /totalProbs[:,:,None]
+    v = evalPolicyMatrix(policy, S, Pnew, R, discount_factor)
+    return v[0]
+    """
     s = 0
     total_reward = 0
 
@@ -96,7 +103,7 @@ def run_policy_on_robust_problem(policy, t_max, P, R, p_up, p_low):
         s = s_new
 
     return total_reward
-
+    """
 
 def test1():
     P, R = mdptoolbox.example.forest()
@@ -105,6 +112,35 @@ def test1():
     print(vi.policy)
     # result is (0, 0, 0)
 
+def computePPolicy(policy, S, P):
+    # construct the p matrix for the given policy.
+    # Thus in state s execute action specified by the policy
+    # The PPolicy matrix is filled with the probabilities that correspond to that state and action
+    PPolicy = np.empty((S, S))
+    for s in range(S):
+        a = policy[s]
+        PPolicy[s, :] = P[a][s, :]
+    return PPolicy
 
+def computeRPolicy(policy, S, R):
+    # construct the r vector for the given policy.
+    # Thus in state s execute action specified by the policy
+    # The RPolicy vector is filled with the rewards that correspond to that state and action
+    RPolicy = np.zeros(S)
+    for s in range(S):
+        a = policy[s]
+        RPolicy[s] = R[s][a]
+    return RPolicy
+
+
+def evalPolicyMatrix(policy, S, P, R, discount):
+    PPolicy = computePPolicy(policy, S, P)
+    RPolicy = computeRPolicy(policy, S, R)
+    # Vp = Rp + discount * Pp * Vp
+    # => (I - discount * Pp) Vp = Rp
+    # thus solve for Vp
+    V = np.linalg.solve(
+        (sp.eye(S, S) - discount * PPolicy), RPolicy)
+    return V
 # test1()
 simulate_forest_problem()
