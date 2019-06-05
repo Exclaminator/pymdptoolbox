@@ -8,6 +8,7 @@ import numpy as _np
 import pandas as pd
 from matplotlib import pyplot
 import seaborn as sns
+import scipy as sp
 
 """
 MDP-multi evaluation tool.
@@ -48,7 +49,10 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             # simulate some number of time
             for ii in range(number_of_runs):
                 results_mdp_on_problem.append(
-                    run_policy_on_problem(
+                    # simulate_policy_on_problem(
+                    #     mdp.policy, problem, options
+                    # )
+                    compute_value_for_policy_on_problem(
                         mdp.policy, problem, options
                     )
                 )
@@ -81,6 +85,36 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     return results_all
 
 
+def compute_value_for_policy_on_problem(policy, problem, options):
+    # P and R are A x S x S' shaped
+    R = retrieve_from_dict(problem, "R", [])
+    P = retrieve_from_dict(problem, "P", [])
+    S = len(policy)
+    S_list = _np.array(range(S))
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
+    # todo: P should be an ambiguous simulation
+
+    def computePPolicy(state):
+        return P[policy[state], state, :]
+
+    def computeRPolicy(state):
+        return R[policy[state], state, :]
+
+    PPolicy = map(computePPolicy, range(S))
+    RPolicy = map(computeRPolicy, range(S))
+
+    # hacky conversion using list (otherwise it will return non-numeric objects)
+    P_arr = _np.array(list(PPolicy))
+    R_arr = _np.array(list(RPolicy))
+
+    # Vp = Rp + discount * Pp * Vp
+    # => (I - discount * Pp) Vp = Rp
+    # thus solve for Vp
+    V = _np.linalg.solve(_np.multiply(_np.linalg.inv((sp.eye(S, S) - discount_factor * P_arr)), R_arr), R_arr)
+    return V
+
+
+
 """
 policy: policy retrieved by mdp
 t_max: maximum amount of state transitions to consider
@@ -89,7 +123,7 @@ R: reward kernel
 """
 
 
-def run_policy_on_problem(policy, problem, options):
+def simulate_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
 
@@ -230,9 +264,8 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
     P = problem["P"]
     R = problem["R"]
 
-    # not quite sure whether we should include discount factor as part of the problem, or as part of the mdp
-    # I choose "as part of the mdp" for now
-    discount_factor = retrieve_from_dict(mdp_hyperparameters, "discount_factor", 0.9)
+    # discount factor is probably problem specific
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
 
     mdp_out = None
     # define mdp_out based on the type and any hyperparameters
@@ -355,7 +388,6 @@ run_multi(
         {
             "type": "robustInterval",
             "parameters": {
-                "discount_factor": 0.9,
                 # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
                 # By default z=3 (corresponds to a uniform distribution)
                 "sigma_interval_factor": 3
@@ -379,7 +411,7 @@ run_multi(
         "fix_interval": True,  # perform checking such that p is always within the ambiguity set at simulation time.
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
-        "plot_disabled": False,
+        "plot_disabled": False
     },
     problems_dict={
         "format": "list",
