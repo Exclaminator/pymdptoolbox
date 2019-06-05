@@ -1,6 +1,7 @@
 from mdptoolbox.mdp import ValueIteration, _printVerbosity
 from gurobipy import *
 import numpy as _np
+from decimal import *
 
 class RobustIntervalModel(ValueIteration):
     """A discounted Robust MDP solved using the robust interval model.
@@ -123,7 +124,7 @@ class RobustIntervalModel(ValueIteration):
     """
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, beta = 1, skip_check=False):
+                 max_iter=10, initial_value=0, beta = 1, delta = 0.1, skip_check=False):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -139,6 +140,15 @@ class RobustIntervalModel(ValueIteration):
         self.p_lower = p_lower
         self.p_upper = p_upper
         self.beta = beta
+        self.delta = delta
+        self.bMax = _np.zeros(self.A)
+
+        for a in range(self.A):
+            for i in range(self.S):
+                for j in range(self.S):
+                    self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
+        self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
+        # assert self.beta < _np.max(self.bMax), "beta should be less than " + str(_np.max(self.bMax)) + " for this P"
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -155,7 +165,7 @@ class RobustIntervalModel(ValueIteration):
             # update value
             for s in range(self.S):
                 for a in range(self.A):
-                    self.sigma = self.computeSigmaDualReductionGreg(s, a)
+                    self.sigma = self.computeSigmaMaximumLikelihoodModel(s, a)
                     # notify user
                     if self.verbose:
                         _printVerbosity(self.iter, self.sigma)
@@ -203,40 +213,17 @@ class RobustIntervalModel(ValueIteration):
         model = Model('SigmaReductionGreg')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         objective = LinExpr()
-        objective += -mu
-        objective += _np.dot(
+        objective += mu
+        objective += -_np.dot(
                         _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
                         _np.maximum(
                             _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
                             _np.zeros(self.S))
                     )
-        objective += _np.dot(
+        objective += -_np.dot(
                         self.p_lower[action][state],
                         _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V)
                     )
-
-        model.setObjective(objective, GRB.MINIMIZE)
-
-        # stay silent
-        model.setParam('OutputFlag', 0)
-
-        model.optimize()
-        return model.objVal
-
-
-    # non linear model, cannot be solved by Gurobi
-    def computeSigmaMaximumLikelihoodModel(self, state, action):
-        model = Model('SigmaMaximumLikelihood')
-        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        lmbda = (mu - _np.sum(self.V)) / _np.sum(self.P[action][state])
-        objective = LinExpr()
-        objective += mu
-        objective += - (1 + self.beta)*lmbda
-        for j in range(self.S):
-            objective += lmbda * self.P[action][state][j] * _np.log(lmbda*self.P[action][state][j] / (mu - self.V[j]))
-
-        model.addConstr(lmbda > 0, name='Lambda greater than zero')
-        model.addConstr(mu >= _np.sum(self.V), name='Mu greater equal to v_max')
 
         model.setObjective(objective, GRB.MAXIMIZE)
 
@@ -245,3 +232,62 @@ class RobustIntervalModel(ValueIteration):
 
         model.optimize()
         return model.objVal
+
+    def computeSigmaMaximumLikelihoodModel(self, state, action):
+        mu_lower = _np.max(self.V)
+        e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
+        mu_upper = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
+        mu = (mu_upper + mu_lower)/2
+        while (mu_upper - mu_lower) > self.delta*(1+2*mu_lower):
+            mu = (mu_upper + mu_lower)/2
+            sigmamu = self.derivativeOfSigmaLikelyhoodModel(mu, state, action)
+            if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) > 0:
+                mu_upper = mu
+            else:
+                mu_lower = mu
+        lmbda = self.lambdaLikelyhoodModel(mu, state, action)
+        if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
+            return mu
+        return mu - (1 + self.beta)*lmbda + lmbda*_np.sum(
+            _np.multiply(
+                self.P[action][state],
+                _np.log(sys.float_info.epsilon + _np.divide(
+                        self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
+                        _np.subtract(_np.repeat(mu, self.S), self.V)))))
+
+    def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
+        dsigma = 1 - self.beta + _np.sum(
+            _np.multiply(
+                self.P[action][state],
+                _np.log(
+                    sys.float_info.epsilon +
+                    _np.divide(
+                        self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
+                        _np.subtract(_np.repeat(mu, self.S), self.V)+ sys.float_info.epsilon))))
+        dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power(mu * _np.ones(self.S) - self.V, 2)))
+        dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state], mu * _np.ones(self.S) - self.V)), 2)
+        return dsigma
+
+    def lambdaLikelyhoodModel(self, mu, state, action):
+        return 1 / _np.sum(_np.divide(self.P[action][state], mu*_np.ones(self.S) - self.V + sys.float_info.epsilon))
+
+    # def leftovers(self):
+    #     model = Model('SigmaMaximumLikelihood')
+    #     mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
+    #     lmbda = (mu - _np.sum(self.V)) / _np.sum(self.P[action][state])
+    #     objective = LinExpr()
+    #     objective += mu
+    #     objective += - (1 + self.beta)*lmbda
+    #     for j in range(self.S):
+    #         objective += lmbda * self.P[action][state][j] * _np.log(lmbda*self.P[action][state][j] / (mu - self.V[j]))
+    #
+    #     model.addConstr(lmbda > 0, name='Lambda greater than zero')
+    #     model.addConstr(mu >= _np.sum(self.V), name='Mu greater equal to v_max')
+    #
+    #     model.setObjective(objective, GRB.MAXIMIZE)
+    #
+    #     # stay silent
+    #     model.setParam('OutputFlag', 0)
+    #
+    #     model.optimize()
+    #     return model.objVal
