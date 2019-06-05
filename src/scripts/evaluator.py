@@ -5,6 +5,7 @@ import mdp_base
 import mdptoolbox.example
 import mdptoolbox.Robust
 import numpy as _np
+import pandas as pd
 from matplotlib import pyplot
 import seaborn as sns
 
@@ -21,56 +22,58 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     problem_list = create_problem_list(options, problems_dict)
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
 
-    # if not exists create folder
-    log_folder = "../../logs/"
-
     # retrieve variables from options file
-    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default=log_folder + timestamp + ".log")
-    figure_path = retrieve_from_dict(options, "figure_path", log_folder + timestamp + "_fig/")
+    folder_out = retrieve_from_dict(options, "folder_out", "../../logs/" + timestamp + "/")
+    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default=folder_out + "results.log")
     plot_disabled = retrieve_from_dict(options, "plot_disabled", False)
 
-    os.makedirs(figure_path)
+    os.makedirs(folder_out)
 
     # create log file
     file_to_write = open(log_filename, "w+")
 
-    results_all = []
-    # for each MDP
-    for mdp_pair in mdp_pair_list:
-        file_to_write.write("\n"+str(mdp_pair)+"\n")
+    results_all = {}
 
-        result_mdp = []
-        # run on all problems
-        for problem in problem_list:
-            result_problem = []
+    # run on all problems
+    for problem in problem_list:
+        problem_type = problem["type"]
+        file_to_write.write(str(problem_type) + "\n")
+        results_for_problem = {}
+
+        for mdp_dict in mdp_pair_list:
+            results_mdp_on_problem = []
+            mdp_type = mdp_dict["type"]
             # instantiate mdp
-            mdp = create_mdp_from_dict(mdp_pair, problem, options)
+            mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
             for ii in range(number_of_runs):
-                result_problem.append(
+                results_mdp_on_problem.append(
                     run_policy_on_problem(
                         mdp.policy, problem, options
                     )
                 )
             # do evaluation on results for this mdp and log it
-            file_to_write.write(problem["problem_name"]+":\n")
+            file_to_write.write(mdp_type+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(result_problem, options))+"\n")
+            file_to_write.write(str(evaluate_mdp_results(results_mdp_on_problem, options))+"\n")
+            results_for_problem[mdp_type] = results_mdp_on_problem
 
-            # save a plot to the figure folder
-            if ~plot_disabled:
-                description = problem["problem_name"]+"-"+mdp_pair["type"]
+        # for each problem, create a figure with all mdp's and save
+        if ~plot_disabled:
+            legend = []
+            for mdp_key in results_for_problem.keys():
+                sns.distplot(results_for_problem[mdp_key])
+                legend.append(mdp_key)
 
-                sns.distplot(result_problem)
-                pyplot.title(description)
-                pyplot.xlabel("Value")
-                pyplot.ylabel("Frequency")
-                pyplot.savefig(figure_path+description+".png", dpi=150, format="png")
-                pyplot.close()
+            pyplot.title(problem_type)
+            pyplot.xlabel("Value")
+            pyplot.ylabel("Frequency")
+            pyplot.legend(legend)
+            pyplot.savefig(folder_out + problem_type + ".png", dpi=150, format="png")
+            pyplot.close()
 
-            result_mdp.append(result_problem)
-
-        results_all.append(result_mdp)
+        file_to_write.write("\n")
+        results_all[problem_type] = results_for_problem
 
     # If we want to do some evaluation over the total set of results we can do that here
 
@@ -164,7 +167,7 @@ def create_problem_list(options_object, problems_dict):
             problem_parameters = retrieve_from_dict(problem, "parameters", {})
 
             problem_to_add = {
-                "problem_name": problem_type,
+                "type": problem_type,
                 "parameters": problem_parameters
             }
 
