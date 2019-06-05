@@ -163,18 +163,26 @@ class RobustIntervalModel(ValueIteration):
 
             # see if there is no more improvement
             if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
+                self.V = self.v_next
                 break
+
+            self.V = self.v_next
             if self.iter >= self.max_iter:
                 break
 
-            # update V
-            self.V = self.v_next
 
 
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
+        self.v_next = _np.full(self.V.shape, -_np.inf)
         for s in range(self.S):
-            self.policy[s] = _np.argmax(_np.transpose(self.R)[s])
+            self.policy[s] = 0
+            for a in range(self.A):
+                self.sigma = self.computeSigmaDualReductionGreg(s, a)
+                v_a = self.R[a][s] + self.discount * self.sigma
+                if v_a > self.v_next[s]:
+                    self.v_next[s] = v_a
+                    self.policy[s] = a
 
         #return policy
         self._endRun()
@@ -203,19 +211,19 @@ class RobustIntervalModel(ValueIteration):
         model = Model('SigmaReductionGreg')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         objective = LinExpr()
-        objective += -mu
-        objective += _np.dot(
+        objective += mu
+        objective += -_np.dot(
                         _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
                         _np.maximum(
                             _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
                             _np.zeros(self.S))
                     )
-        objective += _np.dot(
+        objective += -_np.dot(
                         self.p_lower[action][state],
                         _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V)
                     )
 
-        model.setObjective(objective, GRB.MINIMIZE)
+        model.setObjective(objective, GRB.MAXIMIZE)
 
         # stay silent
         model.setParam('OutputFlag', 0)
