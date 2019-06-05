@@ -42,39 +42,45 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         results_for_problem = {}
 
         for mdp_dict in mdp_pair_list:
-            results_mdp_on_problem = []
             mdp_type = mdp_dict["type"]
             # instantiate mdp
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
-            for ii in range(number_of_runs):
-                results_mdp_on_problem.append(
-                    # simulate_policy_on_problem(
-                    #     mdp.policy, problem, options
-                    # )
-                    compute_value_for_policy_on_problem(
-                        mdp.policy, problem, options
-                    )
-                )
+
+            results_mdp_dict = compute_values_X_times(number_of_runs, mdp.policy, problem, options)
+
+            # for ii in range(number_of_runs):
+            #     results_mdp_on_problem.append(
+            #         # simulate_policy_on_problem(
+            #         #     mdp.policy, problem, options
+            #         # )
+            #         compute_value_for_policy_on_problem(
+            #             mdp.policy, problem, options
+            #         )
+            #     )
             # do evaluation on results for this mdp and log it
             file_to_write.write(mdp_type+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(results_mdp_on_problem, options))+"\n")
-            results_for_problem[mdp_type] = results_mdp_on_problem
+            file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
+            results_for_problem[mdp_type, "simulated_results"] = results_mdp_dict["simulated_results"]
+            results_for_problem[mdp_type, "computed_results"] = results_mdp_dict["computed_results"]
 
         # for each problem, create a figure with all mdp's and save
         if ~plot_disabled:
-            legend = []
-            for mdp_key in results_for_problem.keys():
-                sns.distplot(results_for_problem[mdp_key])
-                legend.append(mdp_key)
 
-            pyplot.title(problem_type)
-            pyplot.xlabel("Value")
-            pyplot.ylabel("Frequency")
-            pyplot.legend(legend)
-            pyplot.savefig(folder_out + problem_type + ".png", dpi=150, format="png")
-            pyplot.close()
+            # kinda hacky
+            keys_tuples = list(results_for_problem.keys())
+            keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
+            keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
+
+            make_figure_plot(
+                results_for_problem, keys_simulated, problem_type + " simulated",
+                folder_out + problem_type + ".png"
+            )
+            make_figure_plot(
+                [results_for_problem[x] for x in keys_computed], problem_type + " computed",
+                folder_out + problem_type + ".png"
+            )
 
         file_to_write.write("\n")
         results_all[problem_type] = results_for_problem
@@ -83,6 +89,42 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
     file_to_write.close()
     return results_all
+
+
+def make_figure_plot(results_for_problem, keys, title, path):
+    legend = []
+    results = [results_for_problem[x] for x in keys]
+    for i in range(len(results)):
+        sns.distplot(results[i])
+        legend.append(keys[i])
+
+    pyplot.title(title)
+    pyplot.xlabel("Value")
+    pyplot.ylabel("Frequency")
+    pyplot.legend(legend)
+    pyplot.savefig(path, dpi=150, format="png")
+    pyplot.close()
+
+
+def compute_values_X_times(number_of_runs, policy, problem, options):
+    simulated_results = []
+    computed_results = []
+
+    for ii in range(number_of_runs):
+        simulated_results.append(
+            simulate_policy_on_problem(
+                policy, problem, options
+            )
+        )
+        computed_results.append(compute_value_for_policy_on_problem(
+                policy, problem, options
+            )
+        )
+
+    return {
+        "computed_results": computed_results,
+        "simulated_results": simulated_results
+    }
 
 
 def compute_value_for_policy_on_problem(policy, problem, options):
@@ -108,10 +150,15 @@ def compute_value_for_policy_on_problem(policy, problem, options):
     R_arr = _np.array(list(RPolicy))
 
     # Vp = Rp + discount * Pp * Vp
-    # => (I - discount * Pp) Vp = Rp
+    # => (I - discount * Pp) Vp = Rp -> V_p = inverse(I - discount * Pp) * Rp
     # thus solve for Vp
+    # todo: debug as we sometimes get a singular matrix, which probably means a determinant of zero
     V = _np.linalg.solve(_np.multiply(_np.linalg.inv((sp.eye(S, S) - discount_factor * P_arr)), R_arr), R_arr)
-    return V
+
+    # todo: at the moment V is a S x S' matrix, compute a single value out of it
+    # not sure if this is the way to go.
+    # V[0,:] sounds reasonable (starting state) but I'm not sure about the second index
+    return V[0, 0]
 
 
 
@@ -288,11 +335,14 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
 def evaluate_mdp_results(result_mdp, options):
     # take the results + options object to define how we want to log
 
+    # todo: only take the simulated results (for now)
+    results = result_mdp["simulated_results"]
+
     logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
 
-    average_reward = _np.mean(result_mdp)
-    variance = _np.var(result_mdp)
-    lowest_value = _np.min(result_mdp)
+    average_reward = _np.mean(results)
+    variance = _np.var(results)
+    lowest_value = _np.min(results)
 
     # define logging behavior here
     # maybe add "verbose" or "minimal" etc.
@@ -426,8 +476,7 @@ run_multi(
                 }
             },
             {
-                "type": "forest",
-                "parameters": {}
+                "type": "forest"
             }
         ],
     }
