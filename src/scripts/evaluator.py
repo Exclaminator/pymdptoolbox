@@ -49,7 +49,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             for ii in range(number_of_runs):
                 result_problem.append(
                     run_policy_on_problem(
-                        mdp.policy, problem
+                        mdp.policy, problem, options
                     )
                 )
             # do evaluation on results for this mdp and log it
@@ -86,7 +86,7 @@ R: reward kernel
 """
 
 
-def run_policy_on_problem(policy, problem):
+def run_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
 
@@ -95,13 +95,33 @@ def run_policy_on_problem(policy, problem):
     P_std = _np.sqrt(P_var)
     t_max = problem["t_max"]
     R = problem["R"]
+    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
+
+    # intervals are computed based on the variance and mu
+    P_interval = compute_interval_by_variance(P, P_var)
+    p_low = P_interval["p_low"]
+    p_up = P_interval["p_up"]
+    fix_interval = retrieve_from_dict(options, "fix_interval", False)
 
     for t in range(t_max):
         action = policy[s]
 
         # simulate ambiguity: simulate a transition probability based on the variance
         # we use a normal distribution for now, but we might want to consider other distributions
-        probs = _np.random.normal(P[action, s], P_std[action, s])
+        means_for_dist = P[action, s]
+        stds_for_dist = P_std[action, s]
+
+        if ambig_dist == "gaussian":
+            probs = _np.random.normal(means_for_dist, stds_for_dist)
+        elif ambig_dist == "uniform":
+            probs = _np.random.uniform(p_low[action, s], p_up[action, s])
+        else:
+            raise ValueError("invalid alias to describe distribution: " + ambig_dist)
+
+        # if fix interval, scale any values out of the interval to be the value of the interval
+        if fix_interval:
+            probs = _np.clip(probs, p_low[action, s], p_up[action, s])
+
         # we can't have a negative probabilities, so we take the absolute value
         PP = _np.absolute(probs, _np.zeros(P[action, s].shape))
 
@@ -352,6 +372,8 @@ run_multi(
         "t_max_def": 100,
         "save_figures": True,
         "logging_behavior": "default",
+        "ambig_dist": "gaussian",  # default: "gaussian" <- how the samples for ambiguity are drawn
+        "fix_interval": True,  # perform checking such that p is always within the ambiguity set at simulation time.
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
         "plot_disabled": False,
