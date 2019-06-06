@@ -60,7 +60,6 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
         # for each problem, create figures
         if ~plot_disabled:
-
             # retrieving the corresponding keys for the plots
             keys_tuples = list(results_for_problem.keys())
 
@@ -96,6 +95,7 @@ def make_figure_plot(values, keys, title, path):
     pyplot.ylabel("Frequency")
     pyplot.legend(legend)
     pyplot.savefig(path, dpi=150, format="png")
+    pyplot.show()
     pyplot.close()
 
 
