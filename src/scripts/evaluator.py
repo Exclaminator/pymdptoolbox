@@ -362,8 +362,8 @@ run_multi(
             {
                 "type": "random_highest_p",
                 "parameters": {
-                    "S": 10,
-                    "A": 5,
+                    "S": 2,
+                    "A": 2,
                     "variance": 0.05
                 }
             },

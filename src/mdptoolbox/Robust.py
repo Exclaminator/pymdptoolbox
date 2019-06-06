@@ -240,7 +240,6 @@ class RobustIntervalModel(ValueIteration):
         mu = (mu_upper + mu_lower)/2
         while (mu_upper - mu_lower) > self.delta*(1+2*mu_lower):
             mu = (mu_upper + mu_lower)/2
-            sigmamu = self.derivativeOfSigmaLikelyhoodModel(mu, state, action)
             if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) > 0:
                 mu_upper = mu
             else:
