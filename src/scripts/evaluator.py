@@ -48,7 +48,10 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
             # create an identifier for the legend and naming
-            mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+            #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+            mdp_id = mdp_type
+            if "sigma_identifier" in  mdp_dict["parameters"]:
+                mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
             print(mdp_type)
             print(mdp_dict["parameters"])
             # instantiate mdp
@@ -65,7 +68,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
             file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
             file_to_write.write("Value for original p: {} )\n".format(vp))
-            results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
+            # results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
             results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
 
         # for each problem, create figures
@@ -99,13 +102,13 @@ def make_figure_plot(values, keys, title, path, options):
     legend = []
     results = [values[x] for x in keys]
     for i in range(len(results)):
-        sns.distplot(results[i], hist=retrieve_from_dict(options, "plot_hist", True))
-        legend.append(keys[i][0])
+        sns.distplot(results[i], hist=retrieve_from_dict(options, "plot_hist", True), label=keys[i][0])
+      #  legend.append(keys[i][0])
 
     pyplot.title(title)
     pyplot.xlabel("Value")
     pyplot.ylabel("Frequency")
-    pyplot.legend(legend)
+    pyplot.legend()
     pyplot.savefig(path, dpi=150, format="png")
     pyplot.show()
     pyplot.close()
@@ -118,13 +121,13 @@ def compute_values_X_times(p_set, policy, problem, options):
 
     for P_new in p_set:
         i+=1
-        if i%10 == 0:
-            print ("{}/{}".format(i, len(p_set)))
+        #if i%10 == 0:
+            #print ("{}/{}".format(i, len(p_set)))
         # infect P with ambiguity
         new_problem = problem
         new_problem["P"] = P_new
-        one_run_results = []
         if options["run_simulations"]:
+            one_run_results = []
             for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
                 one_run_results.append(
                     simulate_policy_on_problem(
@@ -132,6 +135,7 @@ def compute_values_X_times(p_set, policy, problem, options):
                     )
                 )
             simulated_results.append(_np.average(one_run_results))
+
         computed_results.append(compute_value_for_policy_on_problem(
             policy, new_problem, options
         ))
@@ -494,10 +498,10 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=1,
+    number_of_runs=100000,
     options={
-        "number_of_paths": 10000,
-        "t_max_def": 100,
+        "number_of_paths": 1,
+        "t_max_def": 10,
         "save_figures": True,
         "logging_behavior": "default",
         "ambig_dist": "gaussian",  # default: "gaussian" <- how the samples for ambiguity are drawn
@@ -506,20 +510,20 @@ run_multi(
         # "figure_save_path": "../../figures"
         "plot_disabled": False,
         "run_simulations": False,
-        "plot_hist": True
+        "plot_hist": False
     },
     problems_dict={
         "format": "list",
         # "list": ["forest_default", "forest_risky"],
         "list": [
-            {
-                "type": "random_highest_p",
-                "parameters": {
-                    "S": 10,
-                    "A": 5,
-                    "variance": 0.05
-                }
-            },
+            #{
+            #    "type": "random_highest_p",
+            #    "parameters": {
+            #        "S": 10,
+            #        "A": 5,
+            #        "variance": 0.05
+            #    }
+            #},
             {
                 "type": "forest",
                 "parameters": {
