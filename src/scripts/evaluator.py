@@ -9,6 +9,7 @@ import pandas as pd
 from matplotlib import pyplot
 import seaborn as sns
 import scipy as sp
+import json
 
 """
 MDP-multi evaluation tool.
@@ -42,6 +43,8 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         results_for_problem = {}
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
+            # create an identifier for the legend and naming
+            mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
             # instantiate mdp
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
@@ -52,11 +55,11 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
 
             # do evaluation on results for this mdp and log it
-            file_to_write.write(mdp_type+":\n")
+            file_to_write.write(mdp_id+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
             file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
-            results_for_problem[mdp_type, "simulated_results"] = results_mdp_dict["simulated_results"]
-            results_for_problem[mdp_type, "computed_results"] = results_mdp_dict["computed_results"]
+            results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
+            results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
 
         # for each problem, create figures
         if ~plot_disabled:
@@ -88,7 +91,7 @@ def make_figure_plot(values, keys, title, path):
     results = [values[x] for x in keys]
     for i in range(len(results)):
         sns.distplot(results[i])
-        legend.append(keys[i])
+        legend.append(keys[i][0])
 
     pyplot.title(title)
     pyplot.xlabel("Value")
