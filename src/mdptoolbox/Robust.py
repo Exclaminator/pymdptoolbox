@@ -123,7 +123,7 @@ class RobustIntervalModel(ValueIteration):
     """
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, beta = 1, skip_check=False):
+                 max_iter=10, initial_value=0, beta = 0.1, skip_check=False):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -155,7 +155,7 @@ class RobustIntervalModel(ValueIteration):
             # update value
             for s in range(self.S):
                 for a in range(self.A):
-                    self.sigma = self.computeSigmaDualReductionGreg2(s, a)
+                    self.sigma = self.computeSigmaElipsoidal(s, a)
                     # notify user
                     if self.verbose:
                         _printVerbosity(self.iter, self.sigma)
@@ -265,6 +265,31 @@ class RobustIntervalModel(ValueIteration):
         #            )
 
         model.setObjective(objective, GRB.MAXIMIZE)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
+
+    # Chi squared distance
+    def computeSigmaElipsoidal(self, state, action):
+        model = Model('SigmaElipsoidal')
+        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
+        p = _np.transpose(_np.array(pGurobi.items()))[1]
+        # objective = LinExpr()
+        # for key, val in p.items():
+        #     objective += val*self.V[key]
+        objective = LinExpr()
+        objective += _np.dot(p, self.V)
+        model.setObjective(objective, GRB.MAXIMIZE)
+        model.addConstr(_np.sum(
+                _np.divide(
+                    _np.multiply(
+                        _np.subtract(p, self.P[action][state]),
+                        _np.subtract(p, self.P[action][state])),
+                    self.P[action][state] + sys.float_info.epsilon
+                )) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)
