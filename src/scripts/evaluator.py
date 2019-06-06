@@ -5,6 +5,7 @@ import mdp_base
 import mdptoolbox.example
 import mdptoolbox.Robust
 import numpy as _np
+import pandas as pd
 from matplotlib import pyplot
 import seaborn as sns
 
@@ -22,53 +23,57 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
 
     # retrieve variables from options file
-    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default="../../logs/" + timestamp + ".log")
-    figure_path = retrieve_from_dict(options, "figure_path", "../../logs/" + timestamp + "_fig/")
+    folder_out = retrieve_from_dict(options, "folder_out", "../../logs/" + timestamp + "/")
+    log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default=folder_out + "results.log")
     plot_disabled = retrieve_from_dict(options, "plot_disabled", False)
 
-    if ~plot_disabled:
-        os.mkdir(figure_path)
+    os.makedirs(folder_out)
 
     # create log file
     file_to_write = open(log_filename, "w+")
 
-    results_all = []
-    # for each MDP
-    for mdp_pair in mdp_pair_list:
-        file_to_write.write("\n"+str(mdp_pair)+"\n")
+    results_all = {}
 
-        result_mdp = []
-        # run on all problems
-        for problem in problem_list:
-            result_problem = []
+    # run on all problems
+    for problem in problem_list:
+        problem_type = problem["type"]
+        file_to_write.write(str(problem_type) + "\n")
+        results_for_problem = {}
+
+        for mdp_dict in mdp_pair_list:
+            results_mdp_on_problem = []
+            mdp_type = mdp_dict["type"]
             # instantiate mdp
-            mdp = create_mdp_from_dict(mdp_pair, problem, options)
+            mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
             for ii in range(number_of_runs):
-                result_problem.append(
+                results_mdp_on_problem.append(
                     run_policy_on_problem(
-                        mdp.policy, problem
+                        mdp.policy, problem, options
                     )
                 )
             # do evaluation on results for this mdp and log it
-            file_to_write.write(problem["problem_name"]+":\n")
+            file_to_write.write(mdp_type+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(result_problem, options))+"\n")
+            file_to_write.write(str(evaluate_mdp_results(results_mdp_on_problem, options))+"\n")
+            results_for_problem[mdp_type] = results_mdp_on_problem
 
-            # save a plot to the figure folder
-            if ~plot_disabled:
-                description = problem["problem_name"]+"-"+mdp_pair["type"]
+        # for each problem, create a figure with all mdp's and save
+        if ~plot_disabled:
+            legend = []
+            for mdp_key in results_for_problem.keys():
+                sns.distplot(results_for_problem[mdp_key])
+                legend.append(mdp_key)
 
-                sns.distplot(result_problem)
-                pyplot.title(description)
-                pyplot.xlabel("Value")
-                pyplot.ylabel("Frequency")
-                pyplot.savefig(figure_path+description+".png", dpi=150, format="png")
-                pyplot.close()
+            pyplot.title(problem_type)
+            pyplot.xlabel("Value")
+            pyplot.ylabel("Frequency")
+            pyplot.legend(legend)
+            pyplot.savefig(folder_out + problem_type + ".png", dpi=150, format="png")
+            pyplot.close()
 
-            result_mdp.append(result_problem)
-
-        results_all.append(result_mdp)
+        file_to_write.write("\n")
+        results_all[problem_type] = results_for_problem
 
     # If we want to do some evaluation over the total set of results we can do that here
 
@@ -84,7 +89,7 @@ R: reward kernel
 """
 
 
-def run_policy_on_problem(policy, problem):
+def run_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
 
@@ -93,13 +98,33 @@ def run_policy_on_problem(policy, problem):
     P_std = _np.sqrt(P_var)
     t_max = problem["t_max"]
     R = problem["R"]
+    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
+
+    # intervals are computed based on the variance and mu
+    P_interval = compute_interval_by_variance(P, P_var)
+    p_low = P_interval["p_low"]
+    p_up = P_interval["p_up"]
+    fix_interval = retrieve_from_dict(options, "fix_interval", False)
 
     for t in range(t_max):
         action = policy[s]
 
         # simulate ambiguity: simulate a transition probability based on the variance
         # we use a normal distribution for now, but we might want to consider other distributions
-        probs = _np.random.normal(P[action, s], P_std[action, s])
+        means_for_dist = P[action, s]
+        stds_for_dist = P_std[action, s]
+
+        if ambig_dist == "gaussian":
+            probs = _np.random.normal(means_for_dist, stds_for_dist)
+        elif ambig_dist == "uniform":
+            probs = _np.random.uniform(p_low[action, s], p_up[action, s])
+        else:
+            raise ValueError("invalid alias to describe distribution: " + ambig_dist)
+
+        # if fix interval, scale any values out of the interval to be the value of the interval
+        if fix_interval:
+            probs = _np.clip(probs, p_low[action, s], p_up[action, s])
+
         # we can't have a negative probabilities, so we take the absolute value
         PP = _np.absolute(probs, _np.zeros(P[action, s].shape))
 
@@ -117,15 +142,13 @@ def run_policy_on_problem(policy, problem):
 
 def compute_interval_by_variance(P, P_var, z=3):
     # we do so by assuming the variance corresponds to an uniform distribution.
-    # Then we compute p_up (b) and p_low (a), the lower and upper bound, using the formulations for variance and mean
     # var(X) = (b - a)^2 / 12
     # mu(X) = (a+b) / 2
     # doing some algebra gives us
     # b = mu + \sqrt(3*var)
     # a = mu - \sqrt(3*var)
-    sqrt3var = _np.sqrt(z*P_var)
-
-    return {"p_up": P + sqrt3var, "p_low": P - sqrt3var}
+    sqrt_z_var = _np.sqrt(z*P_var)
+    return {"p_up": P + sqrt_z_var, "p_low": P - sqrt_z_var}
 
 
 def create_problem_list(options_object, problems_dict):
@@ -144,7 +167,7 @@ def create_problem_list(options_object, problems_dict):
             problem_parameters = retrieve_from_dict(problem, "parameters", {})
 
             problem_to_add = {
-                "problem_name": problem_type,
+                "type": problem_type,
                 "parameters": problem_parameters
             }
 
@@ -254,14 +277,16 @@ def air_conditioning_problem():
     # todo: (for later) create a continuous version instead of a fixed one,
     #  such that we can do simulation based upon calling functions
     # fixed time horizon
-    T = 10
+    # we can set it to 1 to simulate only computing the next action to take (right?)
+    T = 1
     t = range(T)
     # fixed set of temperatures
     s = _np.arange(18, 23, 0.1)
     # indoor temperature
     x = _np.ones([1, T])
     # control input
-    # we can either wait (0) or start air conditioning (1)
+    # a discrete version would be that we can either wait (0) or start air conditioning (1)
+    # a continuous version would have a target temperature
     u = _np.array([0, 1])
     # disturbance, drawn from N(2, 0.2)
     w = _np.random.normal(2, 0.2, T)
@@ -288,9 +313,8 @@ def air_conditioning_problem():
                 _np.power(discount_factor, t),
                 r1[ii] + _np.multiply(_np.random.normal(2000, 200), _np.multiply(u[i], r_wait))
             )
-            # repeat over all states
-            rr = _np.repeat(reward_found[:, _np.newaxis], S, axis=1)
-            # todo, find out whether rr is S x T or T x S and transpose if necessary
+            # repeat over all states to get S x T matrix
+            rr = _np.repeat(reward_found[_np.newaxis, :], S, axis=0)
             R[i, ii, :, :] = rr
 
     # todo: define p
@@ -351,6 +375,8 @@ run_multi(
         "t_max_def": 100,
         "save_figures": True,
         "logging_behavior": "default",
+        "ambig_dist": "gaussian",  # default: "gaussian" <- how the samples for ambiguity are drawn
+        "fix_interval": True,  # perform checking such that p is always within the ambiguity set at simulation time.
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
         "plot_disabled": False,
