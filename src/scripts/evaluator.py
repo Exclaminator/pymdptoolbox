@@ -46,7 +46,10 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
 
-            results_mdp_dict = compute_values_X_times(number_of_runs, mdp.policy, problem, options)
+            p_set = []
+            for i in range(number_of_runs):
+                p_set.append(distortP(problem["P"], problem["P_var"], options))
+            results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
 
             # do evaluation on results for this mdp and log it
             file_to_write.write(mdp_type+":\n")
@@ -57,7 +60,6 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
         # for each problem, create figures
         if ~plot_disabled:
-
             # retrieving the corresponding keys for the plots
             keys_tuples = list(results_for_problem.keys())
 
@@ -93,14 +95,15 @@ def make_figure_plot(values, keys, title, path):
     pyplot.ylabel("Frequency")
     pyplot.legend(legend)
     pyplot.savefig(path, dpi=150, format="png")
+    pyplot.show()
     pyplot.close()
 
 
-def compute_values_X_times(number_of_runs, policy, problem, options):
+def compute_values_X_times(p_set, policy, problem, options):
     simulated_results = []
     computed_results = []
 
-    for ii in range(number_of_runs):
+    for P_new in p_set:
         # infect P with ambiguity
         new_problem = problem
         P_new = distortP(problem["P"], problem["P_var"], options)
