@@ -129,7 +129,7 @@ class RobustModel(ValueIteration):
 
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, beta = 0.1, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+                 max_iter=1000, initial_value=0, beta = 0.1, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -142,8 +142,10 @@ class RobustModel(ValueIteration):
         assert p_lower.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
         assert p_upper.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
 
-        self.p_lower = p_lower
-        self.p_upper = p_upper
+        self.p_lower = _np.maximum(p_lower, 0)
+        self.p_upper = _np.minimum(p_upper, 1)
+
+
         self.beta = beta
         self.max_iter = max_iter
         self.sigma_identifier = sigma_identifier

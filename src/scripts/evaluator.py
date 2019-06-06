@@ -42,6 +42,9 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         file_to_write.write(str(problem_type) + "\n")
         results_for_problem = {}
         print(problem['type'])
+        p_set = []
+        for i in range(number_of_runs):
+            p_set.append(distortP(problem["P"], problem["P_var"], options))
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
             # create an identifier for the legend and naming
@@ -52,15 +55,16 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
 
-            p_set = []
-            for i in range(number_of_runs):
-                p_set.append(distortP(problem["P"], problem["P_var"], options))
             results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
+            vp = compute_value_for_policy_on_problem(
+                mdp.policy, problem, options
+            )
 
             # do evaluation on results for this mdp and log it
             file_to_write.write(mdp_id+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
             file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
+            file_to_write.write("Value for original p: {} )\n".format(vp))
             results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
             results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
 
@@ -250,7 +254,7 @@ def compute_interval_by_variance(P, P_var, z=3):
     p_up = _np.minimum(P + sqrt_z_var, 1)
     p_low = _np.maximum(P - sqrt_z_var, 0)
 
-    return {"p_up": p_up, "p_low": p_low}
+    return {"p_up": P + sqrt_z_var, "p_low": P - sqrt_z_var}
 
 
 def create_problem_list(options_object, problems_dict):
@@ -351,7 +355,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
         )
     elif mdp_type == "valueIteration":
         mdp_out = mdptoolbox.mdp.ValueIteration(P, R, discount=discount_factor)
-
+        mdp_out.max_iter = 10000
     mdp_out.run()
     return mdp_out
 
