@@ -76,10 +76,11 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
             keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
 
-            make_figure_plot(
-                results_for_problem, keys_simulated, problem_type + " simulated",
-                folder_out + problem_type + "simulated.png", options
-            )
+            if options["run_simulations"]:
+                make_figure_plot(
+                    results_for_problem, keys_simulated, problem_type + " simulated",
+                    folder_out + problem_type + "simulated.png", options
+                )
             make_figure_plot(
                 results_for_problem, keys_computed, problem_type + " computed",
                 folder_out + problem_type + "computed.png", options
@@ -123,17 +124,17 @@ def compute_values_X_times(p_set, policy, problem, options):
         new_problem = problem
         new_problem["P"] = P_new
         one_run_results = []
-        for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
-            one_run_results.append(
-                simulate_policy_on_problem(
-                    policy, new_problem, options
+        if options["run_simulations"]:
+            for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
+                one_run_results.append(
+                    simulate_policy_on_problem(
+                        policy, new_problem, options
+                    )
                 )
-            )
-        simulated_results.append(_np.average(one_run_results))
+            simulated_results.append(_np.average(one_run_results))
         computed_results.append(compute_value_for_policy_on_problem(
-                policy, new_problem, options
-            )
-        )
+            policy, new_problem, options
+        ))
 
     return {
         "computed_results": computed_results,
@@ -504,6 +505,7 @@ run_multi(
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
         "plot_disabled": False,
+        "run_simulations": False,
         "plot_hist": True
     },
     problems_dict={
