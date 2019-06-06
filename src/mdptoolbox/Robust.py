@@ -2,7 +2,7 @@ from mdptoolbox.mdp import ValueIteration, _printVerbosity
 from gurobipy import *
 import numpy as _np
 
-class RobustIntervalModel(ValueIteration):
+class RobustModel(ValueIteration):
     """A discounted Robust MDP solved using the robust interval model.
 
     Description
@@ -122,8 +122,13 @@ class RobustIntervalModel(ValueIteration):
 
     """
 
+    sigma_interval = "interval"
+    sigma_ellipsoid = "ellipsoid"
+    sigma_max_like = "max_like"
+
+
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, beta = 0.1, skip_check=False):
+                 max_iter=10, initial_value=0, beta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -140,6 +145,7 @@ class RobustIntervalModel(ValueIteration):
         self.p_upper = p_upper
         self.beta = beta
         self.max_iter = max_iter
+        self.sigma_identifier = sigma_identifier
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -172,15 +178,15 @@ class RobustIntervalModel(ValueIteration):
             if self.iter >= self.max_iter:
                 break
 
-
-
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
         self.v_next = _np.full(self.V.shape, -_np.inf)
         for s in range(self.S):
             self.policy[s] = 0
             for a in range(self.A):
-                self.sigma = self.computeSigmaDualReductionGreg2(s, a)
+
+                # choose a corresponding sigma
+                self.sigma = self.compute_correpsonding_sigma(s, a)
                 v_a = self.R[a][s] + self.discount * self.sigma
                 if v_a > self.v_next[s]:
                     self.v_next[s] = v_a
@@ -188,6 +194,21 @@ class RobustIntervalModel(ValueIteration):
 
         #return policy
         self._endRun()
+
+    def compute_correpsonding_sigma(self, s, a):
+        sigma_interval = "interval"
+        sigma_ellipsoid = "ellipsoid"
+        sigma_max_like = "max_like"
+
+        if self.sigma_identifier == sigma_interval:
+            return self.computeSigmaIntervalModel(s,a)
+        elif self.sigma_identifier == sigma_ellipsoid:
+            return self.computeSigmaElipsoidal(s,a)
+        elif self.sigma_identifier == sigma_max_like:
+            return self.computeSigmaMaximumLikelihoodModel(s,a)
+        else:
+            raise ValueError("invalid sigma identifier:" + self.sigma_identifier)
+
 
     def computeSigmaIntervalModel(self, state, action):
         model = Model('SigmaIntervalMatrix')
@@ -235,7 +256,6 @@ class RobustIntervalModel(ValueIteration):
         model.optimize()
         result =  model.objVal
         return model.objVal
-
 
 
     def computeSigmaDualReductionGreg(self, state, action):
