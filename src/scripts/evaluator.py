@@ -233,7 +233,10 @@ def compute_interval_by_variance(P, P_var, z=3):
     # b = mu + \sqrt(3*var)
     # a = mu - \sqrt(3*var)
     sqrt_z_var = _np.sqrt(z*P_var)
-    return {"p_up": P + sqrt_z_var, "p_low": P - sqrt_z_var}
+    p_up = _np.minimum(P + sqrt_z_var, 1)
+    p_low = _np.maximum(P - sqrt_z_var, 0)
+
+    return {"p_up": p_up, "p_low": p_low}
 
 
 def create_problem_list(options_object, problems_dict):
@@ -288,6 +291,7 @@ def create_problem_list(options_object, problems_dict):
                 A = retrieve_from_dict(problem_parameters, "A", 3)
                 variance = retrieve_from_dict(problem_parameters, "variance", 0.05)
                 P, R = mdptoolbox.example.rand(S, A, is_sparse=False)
+                R = _np.maximum(R, 0)
                 # most probable event per action, state
                 P_argmax = _np.argmax(P, 2)
                 P_var = _np.zeros(P.shape)
