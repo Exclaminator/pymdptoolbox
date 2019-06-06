@@ -139,6 +139,7 @@ class RobustIntervalModel(ValueIteration):
         self.p_lower = p_lower
         self.p_upper = p_upper
         self.beta = beta
+        self.max_iter = max_iter
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -157,10 +158,11 @@ class RobustIntervalModel(ValueIteration):
                 for a in range(self.A):
                     self.sigma = self.computeSigmaElipsoidal(s, a)
                     # notify user
-                    if self.verbose:
-                        _printVerbosity(self.iter, self.sigma)
+                    #if self.verbose:
+                    #    _printVerbosity(self.iter, self.sigma)
                     self.v_next[s] = max(self.v_next[s], self.R[a][s]+self.discount*self.sigma)
-
+            if self.verbose:
+                print("iter {}/{}".format(self.iter, self.max_iter))
             # see if there is no more improvement
             if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
                 self.V = self.v_next
