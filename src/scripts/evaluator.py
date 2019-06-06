@@ -68,13 +68,14 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
             keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
             keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
+
             make_figure_plot(
                 results_for_problem, keys_simulated, problem_type + " simulated",
-                folder_out + problem_type + "simulated.png"
+                folder_out + problem_type + "simulated.png", options
             )
             make_figure_plot(
                 results_for_problem, keys_computed, problem_type + " computed",
-                folder_out + problem_type + "computed.png"
+                folder_out + problem_type + "computed.png", options
             )
 
         file_to_write.write("\n")
@@ -86,11 +87,11 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     return results_all
 
 
-def make_figure_plot(values, keys, title, path):
+def make_figure_plot(values, keys, title, path, options):
     legend = []
     results = [values[x] for x in keys]
     for i in range(len(results)):
-        sns.distplot(results[i])
+        sns.distplot(results[i], hist=retrieve_from_dict(options, "plot_hist", True))
         legend.append(keys[i][0])
 
     pyplot.title(title)
@@ -109,15 +110,16 @@ def compute_values_X_times(p_set, policy, problem, options):
     for P_new in p_set:
         # infect P with ambiguity
         new_problem = problem
-        P_new = distortP(problem["P"], problem["P_var"], options)
-        diff = _np.sum(_np.abs(P_new - problem["P"]))
+        # P_new = distortP(problem["P"], problem["P_var"], options)
+        # diff = _np.sum(_np.abs(P_new - problem["P"]))
         new_problem["P"] = P_new
 
-        simulated_results.append(
-            simulate_policy_on_problem(
-                policy, new_problem, options
+        for ii in range(retrieve_from_dict(options, "number_of_paths", 10)):
+            simulated_results.append(
+                simulate_policy_on_problem(
+                    policy, new_problem, options
+                )
             )
-        )
         computed_results.append(compute_value_for_policy_on_problem(
                 policy, new_problem, options
             )
@@ -148,15 +150,14 @@ def distortP(P, P_var, options):
     else:
         raise ValueError("invalid alias to describe distribution: " + ambig_dist)
 
+    # we can't have a negative probabilities, so we take the absolute value
+    PP = _np.absolute(PP)
+
     # if fix interval, scale any values out of the interval to be the value of the interval
     if retrieve_from_dict(options, "fix_interval", False):
         PP = _np.clip(PP, p_low, p_up)
 
-    # we can't have a negative probabilities, so we take the absolute value
-    PP = _np.absolute(PP, _np.zeros(P.shape))
-
     # normalize to make sum = 1
-
     out = _np.zeros(PP.shape)
     for i in range(PP.shape[0]):
         for ii in range(PP.shape[1]):
@@ -192,8 +193,8 @@ def compute_value_for_policy_on_problem(policy, problem, options):
 
     # solver equation
     V = _np.linalg.solve(
-            sp.eye(S, S) - discount_factor * P_arr,
-            R_arr + _np.finfo(float).eps)
+            sp.eye(S) - discount_factor * P_arr,
+            R_arr)  #+ _np.finfo(float).eps)
 
     # dot product with starting state probabilities + first action
     return V[0, :] @ P_arr[0, :]
@@ -223,7 +224,7 @@ def simulate_policy_on_problem(policy, problem, options):
         s_new = _np.random.choice(a=len(P_a), p=P_a)
         # R is in format A x S x S'
         RR = R[:, s, s_new]
-        total_reward += RR[action] * _np.power(discount_factor, t_max)
+        total_reward += RR[action] * _np.power(discount_factor, t)
         s = s_new
 
     return total_reward
@@ -459,12 +460,12 @@ run_multi(
             },
 
         },
-        {
-            "type": "robust",
-            "parameters": {
-                "sigma_identifier": "max_like"
-            },
-        },
+        # {
+        #     "type": "robust",
+        #     "parameters": {
+        #         "sigma_identifier": "max_like"
+        #     },
+        # },
         {
             "type": "robust",
             "parameters": {
@@ -476,8 +477,9 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=1000,
+    number_of_runs=10,
     options={
+        "number_of_paths": 10,
         "t_max_def": 100,
         "save_figures": True,
         "logging_behavior": "default",
@@ -485,7 +487,8 @@ run_multi(
         "fix_interval": True,  # perform checking such that p is always within the ambiguity set at simulation time.
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
-        "plot_disabled": False
+        "plot_disabled": False,
+        "plot_hist": True
     },
     problems_dict={
         "format": "list",
@@ -500,7 +503,10 @@ run_multi(
                 }
             },
             {
-                "type": "forest"
+                "type": "forest",
+                "parameters": {
+                    "variance": 0.1
+                }
             }
         ],
     }

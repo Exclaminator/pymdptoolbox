@@ -211,9 +211,9 @@ class RobustModel(ValueIteration):
         sigma_max_like = "max_like"
 
         if self.sigma_identifier == sigma_interval:
-            return self.computeSigmaIntervalModel(s,a)
+            return self.computeSigmaIntervalModel(s, a)
         elif self.sigma_identifier == sigma_ellipsoid:
-            return self.computeSigmaElipsoidal(s,a)
+            return self.computeSigmaElipsoidal(s, a)
         elif self.sigma_identifier == sigma_max_like:
             return self.computeSigmaMaximumLikelihoodModel(s,a)
         else:
