@@ -113,13 +113,14 @@ def compute_values_X_times(p_set, policy, problem, options):
         # P_new = distortP(problem["P"], problem["P_var"], options)
         # diff = _np.sum(_np.abs(P_new - problem["P"]))
         new_problem["P"] = P_new
-
-        for ii in range(retrieve_from_dict(options, "number_of_paths", 10)):
-            simulated_results.append(
+        one_run_results = []
+        for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
+            one_run_results.append(
                 simulate_policy_on_problem(
                     policy, new_problem, options
                 )
             )
+        simulated_results.append(_np.average(one_run_results))
         computed_results.append(compute_value_for_policy_on_problem(
                 policy, new_problem, options
             )
@@ -477,9 +478,9 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=10,
+    number_of_runs=1,
     options={
-        "number_of_paths": 10,
+        "number_of_paths": 10000,
         "t_max_def": 100,
         "save_figures": True,
         "logging_behavior": "default",
