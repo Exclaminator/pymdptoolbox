@@ -60,7 +60,6 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
         # for each problem, create figures
         if ~plot_disabled:
-
             # retrieving the corresponding keys for the plots
             keys_tuples = list(results_for_problem.keys())
 
@@ -96,6 +95,7 @@ def make_figure_plot(values, keys, title, path):
     pyplot.ylabel("Frequency")
     pyplot.legend(legend)
     pyplot.savefig(path, dpi=150, format="png")
+    pyplot.show()
     pyplot.close()
 
 
@@ -106,7 +106,8 @@ def compute_values_X_times(p_set, policy, problem, options):
     for P_new in p_set:
         # infect P with ambiguity
         new_problem = problem
-
+        P_new = distortP(problem["P"], problem["P_var"], options)
+        diff = _np.sum(_np.abs(P_new - problem["P"]))
         new_problem["P"] = P_new
 
         simulated_results.append(
@@ -326,13 +327,15 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
     # define mdp_out based on the type and any hyperparameters
     if mdp_type == "randomMdp":
         mdp_out = mdp_base.RandomMdp(P, R, None, None, None, None)
-    elif mdp_type == "robustInterval":
+    elif mdp_type == "robust":
         interval = compute_interval_by_variance(
             P, problem["P_var"], retrieve_from_dict(mdp_hyperparameters, "z", 3)
         )
-        mdp_out = mdptoolbox.Robust.RobustIntervalModel(
+        mdp_out = mdptoolbox.Robust.RobustModel(
             P, R, discount=discount_factor,
-            p_lower=interval["p_low"], p_upper=interval["p_up"])
+            p_lower=interval["p_low"], p_upper=interval["p_up"],
+            sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval")
+        )
     elif mdp_type == "valueIteration":
         mdp_out = mdptoolbox.mdp.ValueIteration(P, R, discount=discount_factor)
 
@@ -444,17 +447,27 @@ Main code to run, which takes arguments and calls functions
 run_multi(
     mdp_pair_list=[
         {
-            "type": "robustInterval",
+            "type": "robust",
             "parameters": {
                 # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
                 # By default z=3 (corresponds to a uniform distribution)
-                "sigma_interval_factor": 3
-            }
+                # "sigma_interval_factor": 3
+                "sigma_identifier": "ellipsoid"
+            },
+
         },
-        # {
-        #     "type": "randomMdp",
-        #     "parameters": {}
-        # },
+        {
+            "type": "robust",
+            "parameters": {
+                "sigma_identifier": "max_like"
+            },
+        },
+        {
+            "type": "robust",
+            "parameters": {
+                "sigma_identifier": "interval"
+            },
+        },
         {
             "type": "valueIteration",
             "parameters": {}
