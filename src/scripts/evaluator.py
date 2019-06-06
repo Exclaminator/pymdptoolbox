@@ -41,10 +41,13 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         problem_type = problem["type"]
         file_to_write.write(str(problem_type) + "\n")
         results_for_problem = {}
+        print(problem['type'])
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
             # create an identifier for the legend and naming
             mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+            print(mdp_type)
+            print(mdp_dict["parameters"])
             # instantiate mdp
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
@@ -106,12 +109,14 @@ def make_figure_plot(values, keys, title, path, options):
 def compute_values_X_times(p_set, policy, problem, options):
     simulated_results = []
     computed_results = []
+    i = 0
 
     for P_new in p_set:
+        i+=1
+        if i%10 == 0:
+            print ("{}/{}".format(i, len(p_set)))
         # infect P with ambiguity
         new_problem = problem
-        # P_new = distortP(problem["P"], problem["P_var"], options)
-        # diff = _np.sum(_np.abs(P_new - problem["P"]))
         new_problem["P"] = P_new
         one_run_results = []
         for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
@@ -180,13 +185,19 @@ def compute_value_for_policy_on_problem(policy, problem, options):
     def computeRPolicy(state):
         return R[policy[state], state, :]
 
+
+
     # hacky conversion using list (otherwise it will return non-numeric objects)
     P_arr = _np.array(list(map(computePPolicy, range(S))))
     R_arr = _np.array(list(map(computeRPolicy, range(S))))
 
+    R_vector = _np.zeros(S)
+    for i in range(S):
+        for j in range(S):
+            R_vector[i] += R_arr[i][j] * P_arr[i][j]
+
     # Vp = Rp + discount * Pp * Vp
     # => (I - discount * Pp) Vp = Rp -> V_p = inverse(I - discount * Pp) * Rp
-
     # inverse equation
     # V = _np.multiply(
     #         _np.linalg.inv(sp.eye(S) - discount_factor * P_arr),
@@ -195,11 +206,8 @@ def compute_value_for_policy_on_problem(policy, problem, options):
     # solver equation
     V = _np.linalg.solve(
             sp.eye(S) - discount_factor * P_arr,
-            R_arr)  #+ _np.finfo(float).eps)
-
-    # dot product with starting state probabilities + first action
-    return V[0, :] @ P_arr[0, :]
-
+            R_vector)  #+ _np.finfo(float).eps)
+    return V[0]
 
 
 """
@@ -352,7 +360,7 @@ def evaluate_mdp_results(result_mdp, options):
     # take the results + options object to define how we want to log
 
     # todo: take both results instead of only the simulated one (for now)
-    results = result_mdp["simulated_results"]
+    results = result_mdp["computed_results"]
 
     logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
 

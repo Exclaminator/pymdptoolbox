@@ -172,7 +172,7 @@ class RobustModel(ValueIteration):
             # update value
             for s in range(self.S):
                 for a in range(self.A):
-                    self.sigma = self.computeSigmaMaximumLikelihoodModel(s, a)
+                    self.sigma = self.compute_correpsonding_sigma(s, a)
                     # notify user
                     # if self.verbose:
                     #    _printVerbosity(self.iter, self.sigma)
@@ -211,7 +211,7 @@ class RobustModel(ValueIteration):
         sigma_max_like = "max_like"
 
         if self.sigma_identifier == sigma_interval:
-            return self.computeSigmaIntervalModel(s, a)
+            return self.computeSigmaDualReductionGreg2(s,a)
         elif self.sigma_identifier == sigma_ellipsoid:
             return self.computeSigmaElipsoidal(s, a)
         elif self.sigma_identifier == sigma_max_like:
