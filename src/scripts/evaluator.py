@@ -108,12 +108,15 @@ def compute_values_X_times(p_set, policy, problem, options):
         new_problem = problem
 
         new_problem["P"] = P_new
-
-        simulated_results.append(
-            simulate_policy_on_problem(
-                policy, new_problem, options
+        one_run_results = []
+        for ii in range(retrieve_from_dict(options, "number_of_paths", 1000)):
+            one_run_results.append(
+                simulate_policy_on_problem(
+                    policy, new_problem, options
+                )
             )
-        )
+        simulated_results.append(_np.average(one_run_results))
+
         computed_results.append(compute_value_for_policy_on_problem(
                 policy, new_problem, options
             )
@@ -219,7 +222,7 @@ def simulate_policy_on_problem(policy, problem, options):
         s_new = _np.random.choice(a=len(P_a), p=P_a)
         # R is in format A x S x S'
         RR = R[:, s, s_new]
-        total_reward += RR[action] * _np.power(discount_factor, t_max)
+        total_reward += RR[action] * _np.power(discount_factor, t)
         s = s_new
 
     return total_reward
@@ -456,9 +459,10 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=1000,
+    number_of_runs=1,
     options={
-        "t_max_def": 100,
+        "number_of_paths": 100000,
+        "t_max_def": 1000,
         "save_figures": True,
         "logging_behavior": "default",
         "ambig_dist": "gaussian",  # default: "gaussian" <- how the samples for ambiguity are drawn
