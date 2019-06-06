@@ -70,6 +70,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             pyplot.ylabel("Frequency")
             pyplot.legend(legend)
             pyplot.savefig(folder_out + problem_type + ".png", dpi=150, format="png")
+            pyplot.show()
             pyplot.close()
 
         file_to_write.write("\n")
