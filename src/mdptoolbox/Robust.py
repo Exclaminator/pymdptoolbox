@@ -231,9 +231,10 @@ class RobustIntervalModel(ValueIteration):
         model.optimize()
         return model.objVal
 
+    # Chi squared distance
     def computeSigmaElipsoidal(self, state, action):
         model = Model('SigmaElipsoidal')
-        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="mu")
+        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
         p = _np.transpose(_np.array(pGurobi.items()))[1]
         # objective = LinExpr()
         # for key, val in p.items():
