@@ -112,7 +112,12 @@ def compute_values_X_times(number_of_runs, policy, problem, options):
     for ii in range(number_of_runs):
         # infect P with ambiguity
         new_problem = problem
-        new_problem["P"] = distortP(problem["P"], problem["P_var"], options)
+        P_new = distortP(problem["P"], problem["P_var"], options)
+        diff = _np.sum(_np.abs(P_new - problem["P"]))
+
+        new_problem["P"] = P_new
+
+
 
         simulated_results.append(
             simulate_policy_on_problem(
@@ -474,7 +479,7 @@ run_multi(
                 "parameters": {
                     "S": 10,
                     "A": 5,
-                    "variance": 1
+                    "variance": 0.1
                 }
             },
             {
