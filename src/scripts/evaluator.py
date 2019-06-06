@@ -8,6 +8,7 @@ import numpy as _np
 import pandas as pd
 from matplotlib import pyplot
 import seaborn as sns
+import scipy as sp
 
 """
 MDP-multi evaluation tool.
@@ -39,38 +40,37 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         problem_type = problem["type"]
         file_to_write.write(str(problem_type) + "\n")
         results_for_problem = {}
-
         for mdp_dict in mdp_pair_list:
-            results_mdp_on_problem = []
             mdp_type = mdp_dict["type"]
             # instantiate mdp
             mdp = create_mdp_from_dict(mdp_dict, problem, options)
             # simulate some number of time
-            for ii in range(number_of_runs):
-                results_mdp_on_problem.append(
-                    run_policy_on_problem(
-                        mdp.policy, problem, options
-                    )
-                )
+
+            results_mdp_dict = compute_values_X_times(number_of_runs, mdp.policy, problem, options)
+
             # do evaluation on results for this mdp and log it
             file_to_write.write(mdp_type+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(results_mdp_on_problem, options))+"\n")
-            results_for_problem[mdp_type] = results_mdp_on_problem
+            file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
+            results_for_problem[mdp_type, "simulated_results"] = results_mdp_dict["simulated_results"]
+            results_for_problem[mdp_type, "computed_results"] = results_mdp_dict["computed_results"]
 
-        # for each problem, create a figure with all mdp's and save
+        # for each problem, create figures
         if ~plot_disabled:
-            legend = []
-            for mdp_key in results_for_problem.keys():
-                sns.distplot(results_for_problem[mdp_key])
-                legend.append(mdp_key)
 
-            pyplot.title(problem_type)
-            pyplot.xlabel("Value")
-            pyplot.ylabel("Frequency")
-            pyplot.legend(legend)
-            pyplot.savefig(folder_out + problem_type + ".png", dpi=150, format="png")
-            pyplot.close()
+            # retrieving the corresponding keys for the plots
+            keys_tuples = list(results_for_problem.keys())
+
+            keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
+            keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
+            make_figure_plot(
+                results_for_problem, keys_simulated, problem_type + " simulated",
+                folder_out + problem_type + "simulated.png"
+            )
+            make_figure_plot(
+                results_for_problem, keys_computed, problem_type + " computed",
+                folder_out + problem_type + "computed.png"
+            )
 
         file_to_write.write("\n")
         results_all[problem_type] = results_for_problem
@@ -81,6 +81,120 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     return results_all
 
 
+def make_figure_plot(values, keys, title, path):
+    legend = []
+    results = [values[x] for x in keys]
+    for i in range(len(results)):
+        sns.distplot(results[i])
+        legend.append(keys[i])
+
+    pyplot.title(title)
+    pyplot.xlabel("Value")
+    pyplot.ylabel("Frequency")
+    pyplot.legend(legend)
+    pyplot.savefig(path, dpi=150, format="png")
+    pyplot.close()
+
+
+def compute_values_X_times(number_of_runs, policy, problem, options):
+    simulated_results = []
+    computed_results = []
+
+    for ii in range(number_of_runs):
+        # infect P with ambiguity
+        new_problem = problem
+        P_new = distortP(problem["P"], problem["P_var"], options)
+        diff = _np.sum(_np.abs(P_new - problem["P"]))
+
+        new_problem["P"] = P_new
+
+        simulated_results.append(
+            simulate_policy_on_problem(
+                policy, new_problem, options
+            )
+        )
+        computed_results.append(compute_value_for_policy_on_problem(
+                policy, new_problem, options
+            )
+        )
+
+    return {
+        "computed_results": computed_results,
+        "simulated_results": simulated_results
+    }
+
+
+def distortP(P, P_var, options):
+    # retrieve distortion type
+    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
+
+    # intervals are computed based on the variance and mu
+    P_interval = compute_interval_by_variance(P, P_var)
+    p_low = P_interval["p_low"]
+    p_up = P_interval["p_up"]
+
+    # simulate ambiguity: simulate a transition probability based on the variance
+    # we use a normal distribution for now, but we might want to consider other distributions
+
+    if ambig_dist == "gaussian":
+        PP = _np.random.normal(P, _np.sqrt(P_var))
+    elif ambig_dist == "uniform":
+        PP = _np.random.uniform(p_low, p_up)
+    else:
+        raise ValueError("invalid alias to describe distribution: " + ambig_dist)
+
+    # if fix interval, scale any values out of the interval to be the value of the interval
+    if retrieve_from_dict(options, "fix_interval", False):
+        PP = _np.clip(PP, p_low, p_up)
+
+    # we can't have a negative probabilities, so we take the absolute value
+    PP = _np.absolute(PP, _np.zeros(P.shape))
+
+    # normalize to make sum = 1
+
+    out = _np.zeros(PP.shape)
+    for i in range(PP.shape[0]):
+        for ii in range(PP.shape[1]):
+            out[i, ii, :] = PP[i, ii, :] / _np.sum(PP[i, ii, :])
+
+    return out
+
+
+def compute_value_for_policy_on_problem(policy, problem, options):
+    # P and R are A x S x S' shaped
+    R = retrieve_from_dict(problem, "R", -1)
+    P = retrieve_from_dict(problem, "P", -1)
+    S = len(policy)
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
+
+    def computePPolicy(state):
+        return P[policy[state], state, :]
+
+    def computeRPolicy(state):
+        return R[policy[state], state, :]
+
+    # hacky conversion using list (otherwise it will return non-numeric objects)
+    P_arr = _np.array(list(map(computePPolicy, range(S))))
+    R_arr = _np.array(list(map(computeRPolicy, range(S))))
+
+    # Vp = Rp + discount * Pp * Vp
+    # => (I - discount * Pp) Vp = Rp -> V_p = inverse(I - discount * Pp) * Rp
+
+    # inverse equation
+    # V = _np.multiply(
+    #         _np.linalg.inv(sp.eye(S) - discount_factor * P_arr),
+    #         R_arr + sys.float_info.epsilon)
+
+    # solver equation
+    V = _np.linalg.solve(
+            sp.eye(S, S) - discount_factor * P_arr,
+            R_arr + _np.finfo(float).eps)
+
+    # dot product with starting state probabilities + first action
+    return V[0, :] @ P_arr[0, :]
+
+
+
 """
 policy: policy retrieved by mdp
 t_max: maximum amount of state transitions to consider
@@ -89,52 +203,22 @@ R: reward kernel
 """
 
 
-def run_policy_on_problem(policy, problem, options):
+def simulate_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
-
-    P = problem["P"]
-    P_var = problem["P_var"]
-    P_std = _np.sqrt(P_var)
     t_max = problem["t_max"]
-    R = problem["R"]
-    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
 
-    # intervals are computed based on the variance and mu
-    P_interval = compute_interval_by_variance(P, P_var)
-    p_low = P_interval["p_low"]
-    p_up = P_interval["p_up"]
-    fix_interval = retrieve_from_dict(options, "fix_interval", False)
+    R = problem["R"]
+    P = problem["P"]
 
     for t in range(t_max):
         action = policy[s]
-
-        # simulate ambiguity: simulate a transition probability based on the variance
-        # we use a normal distribution for now, but we might want to consider other distributions
-        means_for_dist = P[action, s]
-        stds_for_dist = P_std[action, s]
-
-        if ambig_dist == "gaussian":
-            probs = _np.random.normal(means_for_dist, stds_for_dist)
-        elif ambig_dist == "uniform":
-            probs = _np.random.uniform(p_low[action, s], p_up[action, s])
-        else:
-            raise ValueError("invalid alias to describe distribution: " + ambig_dist)
-
-        # if fix interval, scale any values out of the interval to be the value of the interval
-        if fix_interval:
-            probs = _np.clip(probs, p_low[action, s], p_up[action, s])
-
-        # we can't have a negative probabilities, so we take the absolute value
-        PP = _np.absolute(probs, _np.zeros(P[action, s].shape))
-
-        # normalize to make sum = 1
-        PP2 = PP/sum(PP)
-
-        s_new = _np.random.choice(a=len(PP2), p=PP2)
+        P_a = P[action, s]
+        s_new = _np.random.choice(a=len(P_a), p=P_a)
         # R is in format A x S x S'
         RR = R[:, s, s_new]
-        total_reward += RR[action]
+        total_reward += RR[action] * _np.power(discount_factor, t_max)
         s = s_new
 
     return total_reward
@@ -230,9 +314,8 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
     P = problem["P"]
     R = problem["R"]
 
-    # not quite sure whether we should include discount factor as part of the problem, or as part of the mdp
-    # I choose "as part of the mdp" for now
-    discount_factor = retrieve_from_dict(mdp_hyperparameters, "discount_factor", 0.9)
+    # discount factor is probably problem specific
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
 
     mdp_out = None
     # define mdp_out based on the type and any hyperparameters
@@ -255,11 +338,14 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
 def evaluate_mdp_results(result_mdp, options):
     # take the results + options object to define how we want to log
 
+    # todo: take both results instead of only the simulated one (for now)
+    results = result_mdp["simulated_results"]
+
     logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
 
-    average_reward = _np.mean(result_mdp)
-    variance = _np.var(result_mdp)
-    lowest_value = _np.min(result_mdp)
+    average_reward = _np.mean(results)
+    variance = _np.var(results)
+    lowest_value = _np.min(results)
 
     # define logging behavior here
     # maybe add "verbose" or "minimal" etc.
@@ -355,7 +441,6 @@ run_multi(
         {
             "type": "robustInterval",
             "parameters": {
-                "discount_factor": 0.9,
                 # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
                 # By default z=3 (corresponds to a uniform distribution)
                 "sigma_interval_factor": 3
@@ -370,7 +455,7 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=100,
+    number_of_runs=1000,
     options={
         "t_max_def": 100,
         "save_figures": True,
@@ -379,7 +464,7 @@ run_multi(
         "fix_interval": True,  # perform checking such that p is always within the ambiguity set at simulation time.
         # "log_filename": "last_session.log"
         # "figure_save_path": "../../figures"
-        "plot_disabled": False,
+        "plot_disabled": False
     },
     problems_dict={
         "format": "list",
@@ -394,8 +479,7 @@ run_multi(
                 }
             },
             {
-                "type": "forest",
-                "parameters": {}
+                "type": "forest"
             }
         ],
     }
