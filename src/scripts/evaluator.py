@@ -48,15 +48,6 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
 
             results_mdp_dict = compute_values_X_times(number_of_runs, mdp.policy, problem, options)
 
-            # for ii in range(number_of_runs):
-            #     results_mdp_on_problem.append(
-            #         # simulate_policy_on_problem(
-            #         #     mdp.policy, problem, options
-            #         # )
-            #         compute_value_for_policy_on_problem(
-            #             mdp.policy, problem, options
-            #         )
-            #     )
             # do evaluation on results for this mdp and log it
             file_to_write.write(mdp_type+":\n")
             file_to_write.write("policy: "+str(mdp.policy)+"\n")
@@ -117,8 +108,6 @@ def compute_values_X_times(number_of_runs, policy, problem, options):
 
         new_problem["P"] = P_new
 
-
-
         simulated_results.append(
             simulate_policy_on_problem(
                 policy, new_problem, options
@@ -173,8 +162,8 @@ def distortP(P, P_var, options):
 
 def compute_value_for_policy_on_problem(policy, problem, options):
     # P and R are A x S x S' shaped
-    R = retrieve_from_dict(problem, "R", [])
-    P = retrieve_from_dict(problem, "P", [])
+    R = retrieve_from_dict(problem, "R", -1)
+    P = retrieve_from_dict(problem, "P", -1)
     S = len(policy)
     discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
 
@@ -190,10 +179,16 @@ def compute_value_for_policy_on_problem(policy, problem, options):
 
     # Vp = Rp + discount * Pp * Vp
     # => (I - discount * Pp) Vp = Rp -> V_p = inverse(I - discount * Pp) * Rp
-    # thus solve for Vp
-    V = _np.linalg.solve(_np.multiply(
-            _np.linalg.inv((sp.eye(S, S) - discount_factor * P_arr) + _np.finfo(float).eps),
-            R_arr + _np.finfo(float).eps), R_arr)
+
+    # inverse equation
+    # V = _np.multiply(
+    #         _np.linalg.inv(sp.eye(S) - discount_factor * P_arr),
+    #         R_arr + sys.float_info.epsilon)
+
+    # solver equation
+    V = _np.linalg.solve(
+            sp.eye(S, S) - discount_factor * P_arr,
+            R_arr + _np.finfo(float).eps)
 
     # dot product with starting state probabilities + first action
     return V[0, :] @ P_arr[0, :]
@@ -212,6 +207,7 @@ def simulate_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
     t_max = problem["t_max"]
+    discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
 
     R = problem["R"]
     P = problem["P"]
@@ -222,7 +218,7 @@ def simulate_policy_on_problem(policy, problem, options):
         s_new = _np.random.choice(a=len(P_a), p=P_a)
         # R is in format A x S x S'
         RR = R[:, s, s_new]
-        total_reward += RR[action]
+        total_reward += RR[action] * _np.power(discount_factor, t_max)
         s = s_new
 
     return total_reward
@@ -459,7 +455,7 @@ run_multi(
             "parameters": {}
         }
     ],
-    number_of_runs=100,
+    number_of_runs=1000,
     options={
         "t_max_def": 100,
         "save_figures": True,
@@ -479,7 +475,7 @@ run_multi(
                 "parameters": {
                     "S": 10,
                     "A": 5,
-                    "variance": 0.1
+                    "variance": 0.05
                 }
             },
             {
