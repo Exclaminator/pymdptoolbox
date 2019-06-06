@@ -40,7 +40,6 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
         problem_type = problem["type"]
         file_to_write.write(str(problem_type) + "\n")
         results_for_problem = {}
-
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
             # instantiate mdp
@@ -65,21 +64,21 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
             results_for_problem[mdp_type, "simulated_results"] = results_mdp_dict["simulated_results"]
             results_for_problem[mdp_type, "computed_results"] = results_mdp_dict["computed_results"]
 
-        # for each problem, create a figure with all mdp's and save
+        # for each problem, create figures
         if ~plot_disabled:
 
-            # kinda hacky
+            # retrieving the corresponding keys for the plots
             keys_tuples = list(results_for_problem.keys())
+
             keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
             keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
-
             make_figure_plot(
                 results_for_problem, keys_simulated, problem_type + " simulated",
-                folder_out + problem_type + ".png"
+                folder_out + problem_type + "simulated.png"
             )
             make_figure_plot(
-                [results_for_problem[x] for x in keys_computed], problem_type + " computed",
-                folder_out + problem_type + ".png"
+                results_for_problem, keys_computed, problem_type + " computed",
+                folder_out + problem_type + "computed.png"
             )
 
         file_to_write.write("\n")
@@ -91,9 +90,9 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     return results_all
 
 
-def make_figure_plot(results_for_problem, keys, title, path):
+def make_figure_plot(values, keys, title, path):
     legend = []
-    results = [results_for_problem[x] for x in keys]
+    results = [values[x] for x in keys]
     for i in range(len(results)):
         sns.distplot(results[i])
         legend.append(keys[i])
@@ -111,13 +110,17 @@ def compute_values_X_times(number_of_runs, policy, problem, options):
     computed_results = []
 
     for ii in range(number_of_runs):
+        # infect P with ambiguity
+        new_problem = problem
+        new_problem["P"] = distortP(problem["P"], problem["P_var"], options)
+
         simulated_results.append(
             simulate_policy_on_problem(
-                policy, problem, options
+                policy, new_problem, options
             )
         )
         computed_results.append(compute_value_for_policy_on_problem(
-                policy, problem, options
+                policy, new_problem, options
             )
         )
 
@@ -127,14 +130,48 @@ def compute_values_X_times(number_of_runs, policy, problem, options):
     }
 
 
+def distortP(P, P_var, options):
+    # retrieve distortion type
+    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
+
+    # intervals are computed based on the variance and mu
+    P_interval = compute_interval_by_variance(P, P_var)
+    p_low = P_interval["p_low"]
+    p_up = P_interval["p_up"]
+
+    # simulate ambiguity: simulate a transition probability based on the variance
+    # we use a normal distribution for now, but we might want to consider other distributions
+
+    if ambig_dist == "gaussian":
+        PP = _np.random.normal(P, _np.sqrt(P_var))
+    elif ambig_dist == "uniform":
+        PP = _np.random.uniform(p_low, p_up)
+    else:
+        raise ValueError("invalid alias to describe distribution: " + ambig_dist)
+
+    # if fix interval, scale any values out of the interval to be the value of the interval
+    if retrieve_from_dict(options, "fix_interval", False):
+        PP = _np.clip(PP, p_low, p_up)
+
+    # we can't have a negative probabilities, so we take the absolute value
+    PP = _np.absolute(PP, _np.zeros(P.shape))
+
+    # normalize to make sum = 1
+
+    out = _np.zeros(PP.shape)
+    for i in range(PP.shape[0]):
+        for ii in range(PP.shape[1]):
+            out[i, ii, :] = PP[i, ii, :] / _np.sum(PP[i, ii, :])
+
+    return out
+
+
 def compute_value_for_policy_on_problem(policy, problem, options):
     # P and R are A x S x S' shaped
     R = retrieve_from_dict(problem, "R", [])
     P = retrieve_from_dict(problem, "P", [])
     S = len(policy)
-    S_list = _np.array(range(S))
     discount_factor = retrieve_from_dict(problem, "discount_factor", 0.9)
-    # todo: P should be an ambiguous simulation
 
     def computePPolicy(state):
         return P[policy[state], state, :]
@@ -142,23 +179,19 @@ def compute_value_for_policy_on_problem(policy, problem, options):
     def computeRPolicy(state):
         return R[policy[state], state, :]
 
-    PPolicy = map(computePPolicy, range(S))
-    RPolicy = map(computeRPolicy, range(S))
-
     # hacky conversion using list (otherwise it will return non-numeric objects)
-    P_arr = _np.array(list(PPolicy))
-    R_arr = _np.array(list(RPolicy))
+    P_arr = _np.array(list(map(computePPolicy, range(S))))
+    R_arr = _np.array(list(map(computeRPolicy, range(S))))
 
     # Vp = Rp + discount * Pp * Vp
     # => (I - discount * Pp) Vp = Rp -> V_p = inverse(I - discount * Pp) * Rp
     # thus solve for Vp
-    # todo: debug as we sometimes get a singular matrix, which probably means a determinant of zero
-    V = _np.linalg.solve(_np.multiply(_np.linalg.inv((sp.eye(S, S) - discount_factor * P_arr)), R_arr), R_arr)
+    V = _np.linalg.solve(_np.multiply(
+            _np.linalg.inv((sp.eye(S, S) - discount_factor * P_arr) + _np.finfo(float).eps),
+            R_arr + _np.finfo(float).eps), R_arr)
 
-    # todo: at the moment V is a S x S' matrix, compute a single value out of it
-    # not sure if this is the way to go.
-    # V[0,:] sounds reasonable (starting state) but I'm not sure about the second index
-    return V[0, 0]
+    # dot product with starting state probabilities + first action
+    return V[0, :] @ P_arr[0, :]
 
 
 
@@ -173,46 +206,15 @@ R: reward kernel
 def simulate_policy_on_problem(policy, problem, options):
     s = 0
     total_reward = 0
-
-    P = problem["P"]
-    P_var = problem["P_var"]
-    P_std = _np.sqrt(P_var)
     t_max = problem["t_max"]
-    R = problem["R"]
-    ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
 
-    # intervals are computed based on the variance and mu
-    P_interval = compute_interval_by_variance(P, P_var)
-    p_low = P_interval["p_low"]
-    p_up = P_interval["p_up"]
-    fix_interval = retrieve_from_dict(options, "fix_interval", False)
+    R = problem["R"]
+    P = problem["P"]
 
     for t in range(t_max):
         action = policy[s]
-
-        # simulate ambiguity: simulate a transition probability based on the variance
-        # we use a normal distribution for now, but we might want to consider other distributions
-        means_for_dist = P[action, s]
-        stds_for_dist = P_std[action, s]
-
-        if ambig_dist == "gaussian":
-            probs = _np.random.normal(means_for_dist, stds_for_dist)
-        elif ambig_dist == "uniform":
-            probs = _np.random.uniform(p_low[action, s], p_up[action, s])
-        else:
-            raise ValueError("invalid alias to describe distribution: " + ambig_dist)
-
-        # if fix interval, scale any values out of the interval to be the value of the interval
-        if fix_interval:
-            probs = _np.clip(probs, p_low[action, s], p_up[action, s])
-
-        # we can't have a negative probabilities, so we take the absolute value
-        PP = _np.absolute(probs, _np.zeros(P[action, s].shape))
-
-        # normalize to make sum = 1
-        PP2 = PP/sum(PP)
-
-        s_new = _np.random.choice(a=len(PP2), p=PP2)
+        P_a = P[action, s]
+        s_new = _np.random.choice(a=len(P_a), p=P_a)
         # R is in format A x S x S'
         RR = R[:, s, s_new]
         total_reward += RR[action]
@@ -335,7 +337,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
 def evaluate_mdp_results(result_mdp, options):
     # take the results + options object to define how we want to log
 
-    # todo: only take the simulated results (for now)
+    # todo: take both results instead of only the simulated one (for now)
     results = result_mdp["simulated_results"]
 
     logging_behavior = retrieve_from_dict(options, "logging_behavior", "default")
@@ -472,7 +474,7 @@ run_multi(
                 "parameters": {
                     "S": 10,
                     "A": 5,
-                    "variance": 0.05
+                    "variance": 1
                 }
             },
             {
