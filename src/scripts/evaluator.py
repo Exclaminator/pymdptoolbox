@@ -353,6 +353,9 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
             p_lower=interval["p_low"], p_upper=interval["p_up"],
             sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval")
         )
+        if mdp_hyperparameters["sigma_identifier"] == "ellipsoid":
+            mdp_out.max_iter = 10
+
     elif mdp_type == "valueIteration":
         mdp_out = mdptoolbox.mdp.ValueIteration(P, R, discount=discount_factor)
         mdp_out.max_iter = 10000
