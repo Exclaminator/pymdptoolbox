@@ -174,7 +174,7 @@ class RobustModel(ValueIteration):
                 for a in range(self.A):
                     self.sigma = self.computeSigmaMaximumLikelihoodModel(s, a)
                     # notify user
-                    #if self.verbose:
+                    # if self.verbose:
                     #    _printVerbosity(self.iter, self.sigma)
                     self.v_next[s] = max(self.v_next[s], self.R[a][s]+self.discount*self.sigma)
             if self.verbose:
