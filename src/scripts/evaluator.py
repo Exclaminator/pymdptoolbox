@@ -481,12 +481,12 @@ run_multi(
             },
 
         },
-        # {
-        #     "type": "robust",
-        #     "parameters": {
-        #         "sigma_identifier": "max_like"
-        #     },
-        # },
+        {
+            "type": "robust",
+            "parameters": {
+                "sigma_identifier": "wasserstein"
+            },
+        },
         {
             "type": "robust",
             "parameters": {
