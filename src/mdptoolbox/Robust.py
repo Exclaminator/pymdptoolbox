@@ -320,7 +320,7 @@ class RobustModel(ValueIteration):
         #     objective += val*self.V[key]
         objective = LinExpr()
         objective += _np.dot(p, self.V)
-        model.setObjective(objective, GRB.MAXIMIZE)
+        model.setObjective(objective, GRB.MINIMIZE)
         model.addConstr(_np.sum(
                 _np.divide(
                     _np.multiply(
