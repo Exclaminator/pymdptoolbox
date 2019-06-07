@@ -129,7 +129,7 @@ class RobustModel(ValueIteration):
 
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=1000, initial_value=0, beta = 0.1, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+                 max_iter=10, initial_value=0, beta = 0.1, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound

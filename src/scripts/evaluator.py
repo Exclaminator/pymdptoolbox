@@ -34,65 +34,78 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict):
     # create log file
     file_to_write = open(log_filename, "w+")
 
+    log_filename2 = retrieve_from_dict(dictionary=options, field="log_filename", default=folder_out + "results_var.log")
+    file_to_write_var = open(log_filename2, "w+")
+    file_to_write_var.write("{}, {}, {}, {}, {}, {}, {}, {} \n".format("problem_type", "beta","delta", "mdp_id", "average_value",
+                                                            "variance", "lowest_value", "original_p"))
+
     results_all = {}
 
-    # run on all problems
-    for problem in problem_list:
-        problem_type = problem["type"]
-        file_to_write.write(str(problem_type) + "\n")
-        results_for_problem = {}
-        print(problem['type'])
-        p_set = []
-        for i in range(number_of_runs):
-            p_set.append(distortP(problem["P"], problem["P_var"], options))
-        for mdp_dict in mdp_pair_list:
-            mdp_type = mdp_dict["type"]
-            # create an identifier for the legend and naming
-            #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
-            mdp_id = mdp_type
-            if "sigma_identifier" in  mdp_dict["parameters"]:
-                mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
-            print(mdp_type)
-            print(mdp_dict["parameters"])
-            # instantiate mdp
-            mdp = create_mdp_from_dict(mdp_dict, problem, options)
-            # simulate some number of time
+    #for round_var in [x * 0.01 for x in range(0,30)]:
+        # run on all problems
+    for beta in [x * 0.1 for x in range(1,10)]:
+        for delta in [x * 0.1 for x in range(1, 10)]:
+            #delta = 0.1
+            #beta = 0.1
+            for problem in problem_list:
+                #problem["P_var"] = round_var
+                problem_type = problem["type"]
+                file_to_write.write(str(problem_type) + "\n")
+                results_for_problem = {}
+                print(problem['type'])
+                p_set = []
+                for i in range(number_of_runs):
+                    p_set.append(distortP(problem["P"], problem["P_var"], options))
+                for mdp_dict in mdp_pair_list:
+                    mdp_type = mdp_dict["type"]
+                    # create an identifier for the legend and naming
+                    #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+                    mdp_id = mdp_type
+                    if "sigma_identifier" in  mdp_dict["parameters"]:
+                        mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
+                    print(mdp_type)
+                    print(mdp_dict["parameters"])
+                    # instantiate mdp
+                    mdp = create_mdp_from_dict(mdp_dict, problem, options, beta, delta)
+                    # simulate some number of time
 
-            results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
-            vp = compute_value_for_policy_on_problem(
-                mdp.policy, problem, options
-            )
+                    results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
+                    vp = compute_value_for_policy_on_problem(
+                        mdp.policy, problem, options
+                    )
 
-            # do evaluation on results for this mdp and log it
-            file_to_write.write(mdp_id+":\n")
-            file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
-            file_to_write.write("Value for original p: {} )\n".format(vp))
-            # results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
-            results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
+                    # do evaluation on results for this mdp and log it
+                    file_to_write.write(mdp_id+":\n")
+                    file_to_write.write("policy: "+str(mdp.policy)+"\n")
+                    results = evaluate_mdp_results(results_mdp_dict, options)
+                    file_to_write.write(str(results)+"\n")
+                    file_to_write.write("Value for original p: {} )\n".format(vp))
+                    # results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
+                    results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
+                    file_to_write_var.write("{}, {}, {}, {}, {}, {}, {}, {} \n".format(problem_type, beta, delta, mdp_id, results["average_value"], results["variance"], results["lowest_value"], vp))
+                # for each problem, create figures
+                if ~plot_disabled:
+                    # retrieving the corresponding keys for the plots
+                    keys_tuples = list(results_for_problem.keys())
 
-        # for each problem, create figures
-        if ~plot_disabled:
-            # retrieving the corresponding keys for the plots
-            keys_tuples = list(results_for_problem.keys())
+                    keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
+                    keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
 
-            keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
-            keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
+                    #make_figure_plot(
+                    #    results_for_problem, keys_simulated, problem_type + " simulated",
+                    #    folder_out + problem_type + "simulated.png", options
+                    #)
+                    make_figure_plot(
+                        results_for_problem, keys_computed, problem_type + " computed ",
+                        folder_out + problem_type + "computed.png", options
+                    )
 
-            #make_figure_plot(
-            #    results_for_problem, keys_simulated, problem_type + " simulated",
-            #    folder_out + problem_type + "simulated.png", options
-            #)
-            make_figure_plot(
-                results_for_problem, keys_computed, problem_type + " computed",
-                folder_out + problem_type + "computed.png", options
-            )
+                file_to_write.write("\n")
+                results_all[problem_type] = results_for_problem
 
-        file_to_write.write("\n")
-        results_all[problem_type] = results_for_problem
+        # If we want to do some evaluation over the total set of results we can do that here
 
-    # If we want to do some evaluation over the total set of results we can do that here
-
+    file_to_write_var.close()
     file_to_write.close()
     return results_all
 
@@ -117,7 +130,7 @@ def compute_values_X_times(p_set, policy, problem, options):
     simulated_results = []
     computed_results = []
     i = 0
-
+    p_or = problem["P"]
     for P_new in p_set:
         i+=1
         #if i%10 == 0:
@@ -141,6 +154,8 @@ def compute_values_X_times(p_set, policy, problem, options):
             )
         )
 
+    # todo non hack solution
+    problem["P"] = p_or
     return {
         "computed_results": computed_results,
         "simulated_results": simulated_results
@@ -150,7 +165,6 @@ def compute_values_X_times(p_set, policy, problem, options):
 def distortP(P, P_var, options):
     # retrieve distortion type
     ambig_dist = retrieve_from_dict(options, "ambig_dist", "normal")
-
     # intervals are computed based on the variance and mu
     P_interval = compute_interval_by_variance(P, P_var)
     p_low = P_interval["p_low"]
@@ -257,10 +271,11 @@ def compute_interval_by_variance(P, P_var, z=3):
     # b = mu + \sqrt(3*var)
     # a = mu - \sqrt(3*var)
     sqrt_z_var = _np.sqrt(z*P_var)
+
     p_up = _np.minimum(P + sqrt_z_var, 1)
     p_low = _np.maximum(P - sqrt_z_var, 0)
 
-    return {"p_up": P + sqrt_z_var, "p_low": P - sqrt_z_var}
+    return {"p_up": p_up, "p_low": p_low}
 
 
 def create_problem_list(options_object, problems_dict):
@@ -293,7 +308,7 @@ def create_problem_list(options_object, problems_dict):
                 # number of states
                 S = retrieve_from_dict(problem_parameters, "S", 10)
                 # reward when 'wait' is performed in its oldest state
-                r1 = retrieve_from_dict(problem_parameters, "r1", 40)
+                r1 = retrieve_from_dict(problem_parameters, "r1", 10)
                 # reward when 'cut' is performed in its oldest state
                 r2 = retrieve_from_dict(problem_parameters, "r2", 1)
                 # probability of fire
@@ -337,7 +352,7 @@ Function that creates the corresponding mdp
 """
 
 
-def create_mdp_from_dict(mdp_as_dict, problem, options):
+def create_mdp_from_dict(mdp_as_dict, problem, options, beta=0.1, delta = 0.1):
     mdp_type = mdp_as_dict["type"]
     mdp_hyperparameters = mdp_as_dict["parameters"]
     P = problem["P"]
@@ -357,8 +372,10 @@ def create_mdp_from_dict(mdp_as_dict, problem, options):
         mdp_out = mdptoolbox.Robust.RobustModel(
             P, R, discount=discount_factor,
             p_lower=interval["p_low"], p_upper=interval["p_up"],
-            sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval")
+            sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval"),
+            beta = beta, delta = delta
         )
+        mdp_out.setVerbose()
         if mdp_hyperparameters["sigma_identifier"] == "ellipsoid":
             mdp_out.max_iter = 10
 
@@ -488,18 +505,18 @@ run_multi(
                  "sigma_identifier": "max_like"
              },
          },
-        {
-            "type": "robust",
-            "parameters": {
-                "sigma_identifier": "interval"
-            },
-        },
+        # {
+        #     "type": "robust",
+        #     "parameters": {
+        #         "sigma_identifier": "interval"
+        #     },
+        # },
         {
             "type": "valueIteration",
             "parameters": {}
         }
     ],
-    number_of_runs=100000,
+    number_of_runs=10000,
     options={
         "number_of_paths": 1,
         "t_max_def": 10,
