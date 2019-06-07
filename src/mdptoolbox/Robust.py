@@ -126,10 +126,11 @@ class RobustModel(ValueIteration):
     sigma_interval = "interval"
     sigma_ellipsoid = "ellipsoid"
     sigma_max_like = "max_like"
+    sigma_wasserstein = "wasserstein"
 
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=10, initial_value=0, beta = 0.1, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+                 max_iter=1000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -156,7 +157,8 @@ class RobustModel(ValueIteration):
             for i in range(self.S):
                 for j in range(self.S):
                     self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
-        self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
+        if self.sigma_identifier == "max_like":
+            self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
         # assert self.beta < _np.max(self.bMax), "beta should be less than " + str(_np.max(self.bMax)) + " for this P"
 
     def run(self):
@@ -211,6 +213,7 @@ class RobustModel(ValueIteration):
         sigma_interval = "interval"
         sigma_ellipsoid = "ellipsoid"
         sigma_max_like = "max_like"
+        sigma_wasserstein = "wasserstein"
 
         if self.sigma_identifier == sigma_interval:
             return self.computeSigmaDualReductionGreg2(s,a)
@@ -218,6 +221,8 @@ class RobustModel(ValueIteration):
             return self.computeSigmaElipsoidal(s, a)
         elif self.sigma_identifier == sigma_max_like:
             return self.computeSigmaMaximumLikelihoodModel(s,a)
+        elif self.sigma_identifier == sigma_wasserstein:
+            return self.computeSigmaEMD(s, a)
         else:
             raise ValueError("invalid sigma identifier:" + self.sigma_identifier)
 
@@ -316,7 +321,7 @@ class RobustModel(ValueIteration):
         #     objective += val*self.V[key]
         objective = LinExpr()
         objective += _np.dot(p, self.V)
-        model.setObjective(objective, GRB.MAXIMIZE)
+        model.setObjective(objective, GRB.MINIMIZE)
         model.addConstr(_np.sum(
                 _np.divide(
                     _np.multiply(
@@ -324,6 +329,30 @@ class RobustModel(ValueIteration):
                         _np.subtract(p, self.P[action][state])),
                     self.P[action][state] + sys.float_info.epsilon
                 )) <= self.beta)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
+
+    # Wasserstein
+    def computeSigmaEMD(self, state, action):
+        model = Model('SigmaEMD')
+        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
+        p = _np.transpose(_np.array(pGurobi.items()))[1]
+        emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
+        emd = _np.transpose(_np.array(emdGurobi.items()))[1]
+        objective = LinExpr()
+        objective += _np.dot(p, self.V)
+        model.setObjective(objective, GRB.MINIMIZE)
+        for i in range(self.S):
+            if i == 0:
+                model.addConstr(emd[i] == p[i] - self.P[action][state][i])
+            else:
+                model.addConstr(emd[i] == p[i] - self.P[action][state][i] + emd[i-1])
+        model.addConstr((-_np.sum(emd)) <= self.beta)
+        model.addConstr(_np.sum(emd) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)
