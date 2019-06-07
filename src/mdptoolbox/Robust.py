@@ -157,7 +157,8 @@ class RobustModel(ValueIteration):
             for i in range(self.S):
                 for j in range(self.S):
                     self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
-        self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
+        if self.sigma_identifier == "max_like":
+            self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
         # assert self.beta < _np.max(self.bMax), "beta should be less than " + str(_np.max(self.bMax)) + " for this P"
 
     def run(self):
