@@ -2,38 +2,61 @@ import matplotlib.pyplot as plt
 import csv
 import numpy as np
 
-value = []
-robust = []
-ep = []
-ml = []
+# settings
+folder = "20190611-010455"
+
+#only select rows with the given value for the specified columns
+row_filter = {
+    'beta':'0.2',
+    'delta':'0.2'
+}
+
+xColumn = 'var'
+yColumns = ['average_value', 'min_value', 'variance']
+
+labelColumn = 'mdp_id'
+
+# init arrays
+results = {}
 x = []
 
-with open('C:\\Users\\jens\\Documents\\studie\\pymdptoolbox\\logs\\20190606-231826\\results_var.log', mode='r') as csv_file:
+with open('..\\..\\logs\\' + folder + '\\results_params.log', mode='r') as csv_file:
     csv_reader = csv.DictReader(csv_file)
     for row in csv_reader:
-        if (row[' beta'] == ' 0.4'):
-            if row[' mdp_id'] == " valueIteration":
-                value.append(row)
-                x.append(float(row[' delta']))
-            if row[' mdp_id'] == " robust interval":
-                robust.append(row)
-            if row[' mdp_id'] == " robust max_like":
-                ml.append(row)
-            if row[' mdp_id'] == " robust ellipsoid":
-                ep.append(row)
+        # check if row should be read
+        use_row = True
+        for k in row_filter.keys():
+            if row[k] != row_filter[k]:
+                use_row = False
+                break
+        if not use_row:
+            continue
 
-key = " average_value"
-ep_avg = [float(d[key]) for d in ep]
-ml_avg = [float(d[key]) for d in ml]
-v_avg  = [float(d[key]) for d in value]
+        if row['problem_type'] not in results:
+            results[row['problem_type']] = {}
+        problemResults = results[row['problem_type']]
+        mdp = row[labelColumn]
+        if mdp not in problemResults:
+            problemResults[mdp] = []
 
-plt.plot(x, ep_avg, 'r-', label='interval')
-plt.plot(x, ml_avg, 'b-', label='value iteration')
-plt.legend()
-plt.title("Min")
-plt.xlabel("Max fluctuation in P")
-plt.ylabel("Value")
-plt.axis([0, 1, 0, 30])
+        problemResults[mdp].append(row)
 
-plt.show()
-test = 45
+        if len(x) == 0 or x[-1] != float(row[xColumn]):
+            x.append(float(row[xColumn]))
+
+
+
+for key in yColumns:
+    for problem in results:
+        for mdp in results[problem]:
+            plot_values = [float(d[key]) for d in results[problem][mdp]]
+
+            plt.plot(x, plot_values, label=mdp)
+
+
+    plt.legend()
+    plt.title(problem + " " + key)
+    plt.xlabel(xColumn)
+    plt.ylabel(key)
+    #plt.axis([0, 1, 0, 30])
+    plt.show()
