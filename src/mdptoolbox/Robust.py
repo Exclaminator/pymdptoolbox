@@ -130,7 +130,7 @@ class RobustModel(ValueIteration):
 
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=1000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+                 max_iter=10000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -384,7 +384,7 @@ class RobustModel(ValueIteration):
                         _np.subtract(_np.repeat(mu, self.S), self.V)))))
 
     def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma = 1 - self.beta + _np.sum(
+        dsigma = - self.beta + _np.sum(
             _np.multiply(
                 self.P[action][state],
                 _np.log(

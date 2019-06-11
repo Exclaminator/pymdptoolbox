@@ -36,7 +36,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict, test_argume
 
     params_log_filename = retrieve_from_dict(dictionary=options, field="log_filename", default=folder_out + "results_params.log")
     file_to_write_params = open(params_log_filename, "w+")
-    file_to_write_params.write("{},{},{},{},{},{},{},{},{}\n".format("problem_type", "beta","delta","var", "mdp_id", "average_value","min_value","variance","value_orignal_p"))
+    file_to_write_params.write("{},{},{},{},{},{},{},{},{}\n".format("problem_type", "beta","delta","var", "mdp_id", "average_value","variance","min_value","value_orignal_p"))
 
     results_all = {}
 
@@ -442,7 +442,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options, beta=0.1, delta = 0.1):
         )
         #mdp_out.setVerbose()
         if mdp_hyperparameters["sigma_identifier"] == "ellipsoid":
-            mdp_out.max_iter = 10
+            mdp_out.max_iter = 1000
 
     elif mdp_type == "valueIteration":
         mdp_out = mdptoolbox.mdp.ValueIteration(P, R, discount=discount_factor)
