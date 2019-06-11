@@ -343,6 +343,8 @@ class RobustModel(ValueIteration):
         p = _np.transpose(_np.array(pGurobi.items()))[1]
         emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
         emd = _np.transpose(_np.array(emdGurobi.items()))[1]
+        emdAbsGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd_abs")
+        emdAbs = _np.transpose(_np.array(emdAbsGurobi.items()))[1]
         objective = LinExpr()
         objective += _np.dot(p, self.V)
         model.setObjective(objective, GRB.MINIMIZE)
@@ -351,8 +353,10 @@ class RobustModel(ValueIteration):
                 model.addConstr(emd[i] == p[i] - self.P[action][state][i])
             else:
                 model.addConstr(emd[i] == p[i] - self.P[action][state][i] + emd[i-1])
-        model.addConstr((-_np.sum(emd)) <= self.beta)
-        model.addConstr(_np.sum(emd) <= self.beta)
+            model.addConstr(emd[i] <= emdAbs[i])
+            model.addConstr(-emd[i] <= emdAbs[i])
+        model.addConstr((-_np.sum(emdAbs)) <= self.beta)
+        model.addConstr(_np.sum(emdAbs) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)
