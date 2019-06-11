@@ -388,7 +388,7 @@ class RobustModel(ValueIteration):
                         _np.subtract(_np.repeat(mu, self.S), self.V)))))
 
     def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma = 1 - self.beta + _np.sum(
+        dsigma = - self.beta + _np.sum(
             _np.multiply(
                 self.P[action][state],
                 _np.log(
