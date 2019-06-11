@@ -1,8 +1,7 @@
 import mdptoolbox.example
-from mdptoolbox.mdp import ValueIteration, _printVerbosity
+from mdptoolbox.mdp import ValueIteration
 from gurobipy import *
 import numpy as _np
-from decimal import *
 
 class RobustModel(ValueIteration):
     """A discounted Robust MDP solved using the robust interval model.
@@ -30,10 +29,9 @@ class RobustModel(ValueIteration):
     discount : float
         Discount factor. See the documentation for the ``MDP`` class for
         details.
-    p_lower : array
-        Lowerbound on transition probabilty matrix.
-    p_upper : array
-        Upperbound on transition probabilty matrix.
+    innerfunction : innerfunction
+        Determines the ambiguity set. Can be found inside RobustModel.innerMethod,
+        avaliable: Interval, Elipsoid, Wasserstein, Likelihood
     epsilon : float, optional
         Stopping criterion. See the documentation for the ``MDP`` class for
         details.  Default: 0.01.
@@ -79,51 +77,24 @@ class RobustModel(ValueIteration):
 
     Examples
     --------
-    # >>> import mdptoolbox, mdptoolbox.example
-    # >>> P, R = mdptoolbox.example.forest()
-    # >>> vi = mdptoolbox.mdp.ValueIteration(P, R, 0.96)
-    # >>> vi.verbose
-    # False
-    # >>> vi.run()
-    # >>> expected = (5.93215488, 9.38815488, 13.38815488)
-    # >>> all(expected[k] - vi.V[k] < 1e-12 for k in range(len(expected)))
-    # True
-    # >>> vi.policy
-    # (0, 0, 0)
-    # >>> vi.iter
-    # 4
-    #
-    # >>> import mdptoolbox
-    # >>> import numpy as np
-    # >>> P = np.array([[[0.5, 0.5],[0.8, 0.2]],[[0, 1],[0.1, 0.9]]])
-    # >>> R = np.array([[5, 10], [-1, 2]])
-    # >>> vi = mdptoolbox.mdp.ValueIteration(P, R, 0.9)
-    # >>> vi.run()
-    # >>> expected = (40.048625392716815, 33.65371175967546)
-    # >>> all(expected[k] - vi.V[k] < 1e-12 for k in range(len(expected)))
-    # True
-    # >>> vi.policy
-    # (1, 0)
-    # >>> vi.iter
-    # 26
-    #
-    # >>> import mdptoolbox
-    # >>> import numpy as np
-    # >>> from scipy.sparse import csr_matrix as sparse
-    # >>> P = [None] * 2
-    # >>> P[0] = sparse([[0.5, 0.5],[0.8, 0.2]])
-    # >>> P[1] = sparse([[0, 1],[0.1, 0.9]])
-    # >>> R = np.array([[5, 10], [-1, 2]])
-    # >>> vi = mdptoolbox.mdp.ValueIteration(P, R, 0.9)
-    # >>> vi.run()
-    # >>> expected = (40.048625392716815, 33.65371175967546)
-    # >>> all(expected[k] - vi.V[k] < 1e-12 for k in range(len(expected)))
-    # True
-    # >>> vi.policy
-    # (1, 0)
-
+    >>> import mdptoolbox, mdptoolbox.example
+    >>> P, R = mdptoolbox.example.forest()
+    >>> vi = mdptoolbox.Robust.RobustModel(P, R, 0.96, mdptoolbox.Robust.RobustModel.innerMethod.Elipsoid(1.5))
+    >>> vi.verbose
+    False
+    >>> vi.run()
+    Academic license - for non-commercial use only
+    >>> expected = (5.573706829021013e-08, 1.0000000000592792, 4.000000222896506)
+    >>> all(expected[k] - vi.V[k] < 1e-12 for k in range(len(expected)))
+    True
+    >>> vi.policy
+    (0, 1, 0)
+    >>> vi.iter
+    2
     """
-    def __init__(self, transitions, reward, discount, innerfunction, epsilon=0.01, max_iter=1000, initial_value=0, skip_check=False):
+    def __init__(self, transitions, reward, discount, innerfunction, epsilon=0.01, max_iter=1000, initial_value=0,
+                 skip_check=False):
+        # call parent constructor
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # bind context of inner function and make it accessable
@@ -175,6 +146,7 @@ class RobustModel(ValueIteration):
         self._endRun()
 
     class innerMethod:
+        # Interval based model
         def Interval(p_upper, p_lower):
             def innerInterval(self):
                 if p_lower.shape == (self.S,):
@@ -326,11 +298,3 @@ class RobustModel(ValueIteration):
 
                 return computeSigmaMaximumLikelihoodModel
             return innerLikelihood
-
-    
-# run robust
-if __name__ == "__main__":
-    P, R = mdptoolbox.example.forest()
-    s = RobustModel(P, R, 0.9, RobustModel.innerMethod.Elipsoid(23))
-    s.run()
-    print(s.policy)
