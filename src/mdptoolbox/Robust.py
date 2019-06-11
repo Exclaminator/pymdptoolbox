@@ -130,7 +130,7 @@ class RobustModel(ValueIteration):
 
 
     def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=1000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+                 max_iter=10000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
         # In the robust interval model, each p is given a lower and upper bound
@@ -343,6 +343,8 @@ class RobustModel(ValueIteration):
         p = _np.transpose(_np.array(pGurobi.items()))[1]
         emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
         emd = _np.transpose(_np.array(emdGurobi.items()))[1]
+        emdAbsGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd_abs")
+        emdAbs = _np.transpose(_np.array(emdAbsGurobi.items()))[1]
         objective = LinExpr()
         objective += _np.dot(p, self.V)
         model.setObjective(objective, GRB.MINIMIZE)
@@ -351,8 +353,10 @@ class RobustModel(ValueIteration):
                 model.addConstr(emd[i] == p[i] - self.P[action][state][i])
             else:
                 model.addConstr(emd[i] == p[i] - self.P[action][state][i] + emd[i-1])
-        model.addConstr((-_np.sum(emd)) <= self.beta)
-        model.addConstr(_np.sum(emd) <= self.beta)
+            model.addConstr(emd[i] <= emdAbs[i])
+            model.addConstr(-emd[i] <= emdAbs[i])
+        model.addConstr((-_np.sum(emdAbs)) <= self.beta)
+        model.addConstr(_np.sum(emdAbs) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)
@@ -384,7 +388,7 @@ class RobustModel(ValueIteration):
                         _np.subtract(_np.repeat(mu, self.S), self.V)))))
 
     def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma = 1 - self.beta + _np.sum(
+        dsigma = - self.beta + _np.sum(
             _np.multiply(
                 self.P[action][state],
                 _np.log(
