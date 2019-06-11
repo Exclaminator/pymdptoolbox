@@ -1,3 +1,4 @@
+import mdptoolbox.example
 from mdptoolbox.mdp import ValueIteration, _printVerbosity
 from gurobipy import *
 import numpy as _np
@@ -122,44 +123,11 @@ class RobustModel(ValueIteration):
     # (1, 0)
 
     """
-
-    sigma_interval = "interval"
-    sigma_ellipsoid = "ellipsoid"
-    sigma_max_like = "max_like"
-    sigma_wasserstein = "wasserstein"
-
-
-    def __init__(self, transitions, reward, discount, p_lower, p_upper, epsilon=0.01,
-                 max_iter=1000, initial_value=0, beta = 0.5, delta = 0.1, skip_check=False, sigma_identifier=sigma_interval):
+    def __init__(self, transitions, reward, discount, innerfunction, epsilon=0.01, max_iter=1000, initial_value=0, skip_check=False):
         ValueIteration.__init__(self, transitions, reward, discount, epsilon, max_iter, initial_value, skip_check)
 
-        # In the robust interval model, each p is given a lower and upper bound
-        # TODO add errors for wrong upper and lower bounds
-        if p_lower.shape == (self.S,):
-            p_lower = _np.repeat([_np.repeat([p_lower], self.S, axis=0)], self.A, axis=0)
-        if p_upper.shape == (self.S,):
-            p_upper = _np.repeat([_np.repeat([p_upper], self.S, axis=0)], self.A, axis=0)
-
-        assert p_lower.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
-        assert p_upper.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
-
-        self.p_lower = _np.maximum(p_lower, 0)
-        self.p_upper = _np.minimum(p_upper, 1)
-
-
-        self.beta = beta
-        self.max_iter = max_iter
-        self.sigma_identifier = sigma_identifier
-        self.delta = delta
-        self.bMax = _np.zeros(self.A)
-
-        for a in range(self.A):
-            for i in range(self.S):
-                for j in range(self.S):
-                    self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
-        if self.sigma_identifier == "max_like":
-            self.beta = _np.minimum(self.beta, _np.max(self.bMax)) # cutoff beta
-        # assert self.beta < _np.max(self.bMax), "beta should be less than " + str(_np.max(self.bMax)) + " for this P"
+        # bind context of inner function and make it accessable
+        self.innerfunction = innerfunction(self)
 
     def run(self):
         # Run the modified policy iteration algorithm.
@@ -176,10 +144,7 @@ class RobustModel(ValueIteration):
             # update value
             for s in range(self.S):
                 for a in range(self.A):
-                    self.sigma = self.compute_correpsonding_sigma(s, a)
-                    # notify user
-                    # if self.verbose:
-                    #    _printVerbosity(self.iter, self.sigma)
+                    self.sigma = self.innerfunction(s, a)
                     self.v_next[s] = max(self.v_next[s], self.R[a][s]+self.discount*self.sigma)
             if self.verbose:
                 print("iter {}/{}".format(self.iter, self.max_iter))
@@ -194,211 +159,178 @@ class RobustModel(ValueIteration):
 
         # make policy
         self.policy = _np.zeros(self.S, dtype=_np.int)
-        self.v_next = _np.full(self.V.shape, -_np.inf)
+        v_next = _np.full(self.V.shape, -_np.inf)
         for s in range(self.S):
             self.policy[s] = 0
             for a in range(self.A):
 
                 # choose a corresponding sigma
-                self.sigma = self.compute_correpsonding_sigma(s, a)
+                self.sigma = self.innerfunction(s, a)
                 v_a = self.R[a][s] + self.discount * self.sigma
-                if v_a > self.v_next[s]:
-                    self.v_next[s] = v_a
+                if v_a > v_next[s]:
+                    v_next[s] = v_a
                     self.policy[s] = a
 
         #return policy
         self._endRun()
 
-    def compute_correpsonding_sigma(self, s, a):
-        sigma_interval = "interval"
-        sigma_ellipsoid = "ellipsoid"
-        sigma_max_like = "max_like"
-        sigma_wasserstein = "wasserstein"
+    class innerMethod:
+        def Interval(p_upper, p_lower):
+            def innerInterval(self):
+                if p_lower.shape == (self.S,):
+                    self.p_lower = _np.repeat([_np.repeat([p_lower], self.S, axis=0)], self.A, axis=0)
+                if p_upper.shape == (self.S,):
+                    self.p_upper = _np.repeat([_np.repeat([p_upper], self.S, axis=0)], self.A, axis=0)
 
-        if self.sigma_identifier == sigma_interval:
-            return self.computeSigmaDualReductionGreg2(s,a)
-        elif self.sigma_identifier == sigma_ellipsoid:
-            return self.computeSigmaElipsoidal(s, a)
-        elif self.sigma_identifier == sigma_max_like:
-            return self.computeSigmaMaximumLikelihoodModel(s,a)
-        elif self.sigma_identifier == sigma_wasserstein:
-            return self.computeSigmaEMD(s, a)
-        else:
-            raise ValueError("invalid sigma identifier:" + self.sigma_identifier)
+                assert self.p_lower.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
+                assert self.p_upper.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
 
+                self.p_lower = _np.maximum(self.p_lower, 0)
+                self.p_upper = _np.minimum(self.p_upper, 1)
 
-    def computeSigmaIntervalModel(self, state, action):
-        model = Model('SigmaIntervalMatrix')
-        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        objective = LinExpr()
-        objective += _np.dot(
-                        _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
-                        # use _np.maximum(v,0) to implement positive part of vector v
-                        _np.maximum(
-                            _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
-                            _np.zeros(self.S)))
-        objective += _np.dot(self.V, self.p_lower[action][state])
-        objective += _np.multiply(mu, (1 - _np.dot(self.p_lower[action][state], _np.ones(self.S, dtype=_np.float))))
-        model.setObjective(objective, GRB.MINIMIZE)
-        
-        # stay silent
-        model.setParam('OutputFlag', 0)
+                def IntervalModel(state, action):
+                    model = Model('IntervalModel')
+                    mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
+                    index = range(len(self.V))
+                    lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
+                    ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
+                    for i in index:
+                        model.addConstr(mu - lu[i] + ll[i] == self.V[i])
+                        model.addConstr(lu[i] >= 0)
+                        model.addConstr(ll[i] >= 0)
 
-        model.optimize()
-        return model.objVal
+                    objective = LinExpr()
+                    objective += mu
 
-    def computeSigmaDualReductionGreg2(self, state, action):
-        model = Model('SigmaReductionGreg')
-        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        index = range(len(self.V))
-        lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
-        ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
-        for i in index:
-            model.addConstr(mu - lu[i] + ll[i] == self.V[i])
-            model.addConstr(lu[i] >= 0)
-            model.addConstr(ll[i] >= 0)
+                    for i in index:
+                        objective += -(self.p_upper[action][state][i] * lu[i])
+                        objective += (self.p_lower[action][state][i] * ll[i])
 
-        objective = LinExpr()
-        objective += mu
+                    model.setObjective(objective, GRB.MAXIMIZE)
 
-        for i in index:
-            objective += -(self.p_upper[action][state][i] * lu[i])
-            objective += (self.p_lower[action][state][i] * ll[i])
+                    # stay silent
+                    model.setParam('OutputFlag', 0)
 
-        model.setObjective(objective, GRB.MAXIMIZE)
+                    model.optimize()
+                    return model.objVa
+                return IntervalModel
+            return innerInterval
 
-        # stay silent
-        model.setParam('OutputFlag', 0)
+        # Chi squared distance
+        def Elipsoid(beta):
+            def innerElipsoid(self):
+                def ElipsoidModel(state, action):
+                    model = Model('ElipsoidModel')
+                    pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
+                    p = _np.transpose(_np.array(pGurobi.items()))[1]
+                    objective = LinExpr()
+                    objective += _np.dot(p, self.V)
+                    model.setObjective(objective, GRB.MINIMIZE)
+                    model.addConstr(_np.sum(
+                            _np.divide(
+                                _np.multiply(
+                                    _np.subtract(p, self.P[action][state]),
+                                    _np.subtract(p, self.P[action][state])),
+                                self.P[action][state] + sys.float_info.epsilon
+                            )) <= beta)
 
-        model.optimize()
-        result =  model.objVal
-        return model.objVal
+                    # stay silent
+                    model.setParam('OutputFlag', 0)
 
+                    model.optimize()
+                    return model.objVal
+                return ElipsoidModel
+            return innerElipsoid
 
-    def computeSigmaDualReductionGreg(self, state, action):
-        model = Model('SigmaReductionGreg')
-        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        index = range(len(self.V))
-        z = model.addVars(index, name="z", vtype=GRB.CONTINUOUS)
-        zt = model.addVars(index, name="zt", vtype=GRB.CONTINUOUS)
-        for i in index:
-            model.addConstr(zt[i] == mu - self.V[i])
-            model.addConstr(z[i] == max_(zt[i], 0))
+        # Wasserstein
+        def Wasserstein(beta):
+            def innerWasserstein(self):
+                def EMD(state, action):
+                    model = Model('SigmaEMD')
+                    pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
+                    p = _np.transpose(_np.array(pGurobi.items()))[1]
+                    emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
+                    emd = _np.transpose(_np.array(emdGurobi.items()))[1]
+                    emdAbsGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd_abs")
+                    emdAbs = _np.transpose(_np.array(emdAbsGurobi.items()))[1]
+                    objective = LinExpr()
+                    objective += _np.dot(p, self.V)
+                    model.setObjective(objective, GRB.MINIMIZE)
+                    for i in range(self.S):
+                        if i == 0:
+                            model.addConstr(emd[i] == p[i] - self.P[action][state][i])
+                        else:
+                            model.addConstr(emd[i] == p[i] - self.P[action][state][i] + emd[i-1])
+                        model.addConstr(emd[i] <= emdAbs[i])
+                        model.addConstr(-emd[i] <= emdAbs[i])
+                    model.addConstr((-_np.sum(emdAbs)) <= beta)
+                    model.addConstr(_np.sum(emdAbs) <= beta)
 
+                    # stay silent
+                    model.setParam('OutputFlag', 0)
 
-        objective = LinExpr()
-        objective += mu
-        #objective += -_np.dot(
-        #                _np.subtract(self.p_upper[action][state], self.p_lower[action][state]),
-        #                _np.maximum(
-        #                    _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V),
-        #                    _np.zeros(self.S)))
-        for i in index:
-            objective += -(self.p_upper[action][state][i] - self.p_lower[action][state][i]) * z[i]
+                    model.optimize()
+                    return model.objVal
+                return EMD
+            return innerWasserstein
 
-        for i in index:
-            objective += -self.p_lower[action][state][i] * (mu - self.V[i])
-        #objective += -_np.dot(
-        #                self.p_lower[action][state],
-        #                _np.subtract(_np.multiply(mu, _np.ones(self.S, dtype=_np.float)), self.V)
-        #            )
+        # Log likelihood model
+        def Likelihood(beta, delta):
+            def innerLikelihood(self):
+                self.bMax = _np.zeros(self.A)
+                for a in range(self.A):
+                    for i in range(self.S):
+                        for j in range(self.S):
+                            self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
 
-        model.setObjective(objective, GRB.MAXIMIZE)
+                if beta > _np.max(self.bMax):
+                    print("Beta will be cut of to " + str(_np.max(self.bMax)))
+                self.beta = _np.minimum(beta, _np.max(self.bMax))
 
-        # stay silent
-        model.setParam('OutputFlag', 0)
+                def computeSigmaMaximumLikelihoodModel(state, action):
+                    mu_lower = _np.max(self.V)
+                    e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
+                    mu_upper = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
+                    mu = (mu_upper + mu_lower)/2
+                    while (mu_upper - mu_lower) > delta*(1+2*mu_lower):
+                        mu = (mu_upper + mu_lower)/2
+                        if derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
+                            mu_upper = mu
+                        else:
+                            mu_lower = mu
+                    lmbda = lambdaLikelyhoodModel(mu, state, action)
+                    if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
+                        return mu
+                    return mu - (1 + self.beta)*lmbda + lmbda*_np.sum(
+                        _np.multiply(
+                            self.P[action][state],
+                            _np.log(sys.float_info.epsilon + _np.divide(
+                                    lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
+                                    _np.subtract(_np.repeat(mu, self.S), self.V)))))
 
-        model.optimize()
-        return model.objVal
+                def derivativeOfSigmaLikelyhoodModel(mu, state, action):
+                    dsigma = - self.beta + _np.sum(
+                        _np.multiply(
+                            self.P[action][state],
+                            _np.log(
+                                sys.float_info.epsilon +
+                                _np.divide(
+                                    lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
+                                    _np.subtract(_np.repeat(mu, self.S), self.V)+ sys.float_info.epsilon))))
+                    dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power(mu * _np.ones(self.S) - self.V, 2)))
+                    dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state], mu * _np.ones(self.S) - self.V)), 2)
+                    return dsigma
 
-    # Chi squared distance
-    def computeSigmaElipsoidal(self, state, action):
-        model = Model('SigmaElipsoidal')
-        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
-        p = _np.transpose(_np.array(pGurobi.items()))[1]
-        # objective = LinExpr()
-        # for key, val in p.items():
-        #     objective += val*self.V[key]
-        objective = LinExpr()
-        objective += _np.dot(p, self.V)
-        model.setObjective(objective, GRB.MINIMIZE)
-        model.addConstr(_np.sum(
-                _np.divide(
-                    _np.multiply(
-                        _np.subtract(p, self.P[action][state]),
-                        _np.subtract(p, self.P[action][state])),
-                    self.P[action][state] + sys.float_info.epsilon
-                )) <= self.beta)
+                def lambdaLikelyhoodModel(mu, state, action):
+                    return 1 / _np.sum(_np.divide(self.P[action][state], mu*_np.ones(self.S) - self.V + sys.float_info.epsilon))
 
-        # stay silent
-        model.setParam('OutputFlag', 0)
+                return computeSigmaMaximumLikelihoodModel
+            return innerLikelihood
 
-        model.optimize()
-        return model.objVal
-
-    # Wasserstein
-    def computeSigmaEMD(self, state, action):
-        model = Model('SigmaEMD')
-        pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
-        p = _np.transpose(_np.array(pGurobi.items()))[1]
-        emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
-        emd = _np.transpose(_np.array(emdGurobi.items()))[1]
-        emdAbsGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd_abs")
-        emdAbs = _np.transpose(_np.array(emdAbsGurobi.items()))[1]
-        objective = LinExpr()
-        objective += _np.dot(p, self.V)
-        model.setObjective(objective, GRB.MINIMIZE)
-        for i in range(self.S):
-            if i == 0:
-                model.addConstr(emd[i] == p[i] - self.P[action][state][i])
-            else:
-                model.addConstr(emd[i] == p[i] - self.P[action][state][i] + emd[i-1])
-            model.addConstr(emd[i] <= emdAbs[i])
-            model.addConstr(-emd[i] <= emdAbs[i])
-        model.addConstr((-_np.sum(emdAbs)) <= self.beta)
-        model.addConstr(_np.sum(emdAbs) <= self.beta)
-
-        # stay silent
-        model.setParam('OutputFlag', 0)
-
-        model.optimize()
-        return model.objVal
-
-
-    # non linear model, cannot be solved by Gurobi
-    def computeSigmaMaximumLikelihoodModel(self, state, action):
-        mu_lower = _np.max(self.V)
-        e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
-        mu_upper = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
-        mu = (mu_upper + mu_lower)/2
-        while (mu_upper - mu_lower) > self.delta*(1+2*mu_lower):
-            mu = (mu_upper + mu_lower)/2
-            if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
-                mu_upper = mu
-            else:
-                mu_lower = mu
-        lmbda = self.lambdaLikelyhoodModel(mu, state, action)
-        if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
-            return mu
-        return mu - (1 + self.beta)*lmbda + lmbda*_np.sum(
-            _np.multiply(
-                self.P[action][state],
-                _np.log(sys.float_info.epsilon + _np.divide(
-                        self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
-                        _np.subtract(_np.repeat(mu, self.S), self.V)))))
-
-    def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma = - self.beta + _np.sum(
-            _np.multiply(
-                self.P[action][state],
-                _np.log(
-                    sys.float_info.epsilon +
-                    _np.divide(
-                        self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
-                        _np.subtract(_np.repeat(mu, self.S), self.V)+ sys.float_info.epsilon))))
-        dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power(mu * _np.ones(self.S) - self.V, 2)))
-        dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state], mu * _np.ones(self.S) - self.V)), 2)
-        return dsigma
-
-    def lambdaLikelyhoodModel(self, mu, state, action):
-        return 1 / _np.sum(_np.divide(self.P[action][state], mu*_np.ones(self.S) - self.V + sys.float_info.epsilon))
+    
+# run robust
+if __name__ == "__main__":
+    P, R = mdptoolbox.example.forest()
+    s = RobustModel(P, R, 0.9, RobustModel.innerMethod.Elipsoid(23))
+    s.run()
+    print(s.policy)
