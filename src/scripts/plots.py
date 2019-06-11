@@ -2,10 +2,14 @@ import matplotlib.pyplot as plt
 import csv
 import numpy as np
 
-# settings
-folder = "20190611-010455"
+# DEBUG instructions: Unexpected results? Check the following things:
+# Is the row filter correct?
+# Is the folder set?
 
-#only select rows with the given value for the specified columns
+# settings
+folder = "20190611-170535"
+
+#only select rows with the given value for the specified columns (usefull when you have changed multiple values
 row_filter = {
     'beta':'0.2',
     'delta':'0.2'
