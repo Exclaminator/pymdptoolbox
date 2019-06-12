@@ -1,4 +1,4 @@
-import Options
+from Options import Options
 import Problem
 import os
 import model_picker
@@ -27,9 +27,9 @@ class Evaluator(object):
     """
     Run the evaluator
     """
-    def run(self, mdp_list):
+    def run(self, mdp_set):
 
-        if self.options.is_default(Options.LOG_FILENAME):
+        if self.options.is_default(Options.LOG_DIR):
             timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
         else:
             timestamp = self.options.get(Options.LOG_DIR)
@@ -42,7 +42,7 @@ class Evaluator(object):
         self.file_to_write = open(log_filename, "w+")
 
         for problem in self.problem_list:
-            self.run_problem(problem, mdp_list)
+            self.run_problem(problem, mdp_set[Options.ELEMENTS_KEY])
 
         self.file_to_write.close()
 
@@ -65,9 +65,9 @@ class Evaluator(object):
         results_for_plotting = {}
 
         # compute mdp performance
-        for mdp_key, mdp_dict in mdp_list:
+        for mdp_dict in mdp_list:
             mdp = model_picker.create_mdp(mdp_dict, problem)
-
+            mdp_key = Evaluator.create_mdp_key(mdp_dict)
             # do evaluation on results for this mdp and log it
             self.file_to_write.write(mdp_key+":\n")
             self.file_to_write.write("policy: "+str(mdp.policy)+"\n")
@@ -87,7 +87,7 @@ class Evaluator(object):
                 self.result_summary_to_logfile(computed_values)
 
         # make plots
-        if ~Options.get(Options.PLOT_DISABLED):
+        if ~self.options.get(Options.PLOT_DISABLED):
             # retrieving the corresponding keys for the plots
             keys_tuples = list(results_for_plotting.keys())
 
@@ -98,6 +98,15 @@ class Evaluator(object):
             if self.options.get(Options.DO_COMPUTATION):
                 keys_computed = list(filter(lambda x: x[1] == Evaluator.COMPUTED_KEY, keys_tuples))
                 self.make_figure_plot(results_for_plotting, keys_computed, problem.KEY + " computed")
+
+    @staticmethod
+    def create_mdp_key(mdp_dict):
+        mdp_key = mdp_dict[Options.TYPE_KEY]
+
+        if mdp_key == model_picker.ROBUST_MDP_KEY:
+            mdp_key += "-"+mdp_dict[Options.PARAMETERS_KEY][model_picker.SIGMA_IDENTIFIER_KEY]
+
+        return mdp_key
 
     def make_figure_plot(self, values, keys, title):
         legend = []
@@ -111,7 +120,7 @@ class Evaluator(object):
         pyplot.ylabel("Frequency")
         pyplot.legend()
 
-        pyplot.savefig(self.log_dir + title, dpi=150, format="png")
+        pyplot.savefig(self.log_dir + title + ".png", dpi=150, format="png")
         pyplot.show()
         pyplot.close()
 

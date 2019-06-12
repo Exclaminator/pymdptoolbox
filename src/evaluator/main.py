@@ -1,4 +1,4 @@
-import Evaluator
+from Evaluator import Evaluator
 
 """
 default configuration, runs the forest problem on some models
@@ -22,24 +22,24 @@ def run_default():
     }
     mdp_dict = {
         "elements": [
-            {
-                "type": "robust",
-                "parameters": {
-                    "sigma_identifier": "ellipsoid"
-                },
-            },
+            # {
+            #     "type": "robust",
+            #     "parameters": {
+            #         "sigma_identifier": "ellipsoid"
+            #     },
+            # },
             {
                 "type": "robust",
                 "parameters": {
                     "sigma_identifier": "wasserstein"
                 },
             },
-            {
-                "type": "robust",
-                "parameters": {
-                    "sigma_identifier": "interval"
-                },
-            },
+            # {
+            #     "type": "robust",
+            #     "parameters": {
+            #         "sigma_identifier": "interval"
+            #     },
+            # },
             {
                 "type": "valueIteration",
                 "parameters": {}
@@ -48,3 +48,6 @@ def run_default():
     }
     evaluator = Evaluator(problem_dict, options_dict)
     evaluator.run(mdp_dict)
+
+
+run_default()

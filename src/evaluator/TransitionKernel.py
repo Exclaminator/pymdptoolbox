@@ -1,5 +1,6 @@
 import abc
 import numpy as _np
+from scipy.stats import wasserstein_distance
 
 
 class TransitionKernel(object):
@@ -30,7 +31,18 @@ class TransitionKernelInterval(TransitionKernel):
         TransitionKernel.__init__(self, ttk)
         self.ttk_low = ttk_low
         self.ttk_up = ttk_up
+        self.compute_beta()
 
+    def compute_beta(self):
+        # add a beta, based on the maximum wasserstein distance possible wrt ttk_low and ttk_up
+        shape = self.ttk.shape
+        beta = _np.zeros(self.ttk.shape)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                dLow = wasserstein_distance(self.ttk[i, j], self.ttk_low[i, j])
+                dUp = wasserstein_distance(self.ttk[i, j], self.ttk_up[i, j])
+                beta[i, j] = _np.maximum(dLow, dUp)
+        self.beta = _np.max(beta)
     """
     Use variance to construct P.
     We do so by assuming the variance corresponds to an uniform distribution.
@@ -74,6 +86,7 @@ class TransitionKernelBeta(TransitionKernel):
 
     """
     Uses beta to construct a transition matrix.
+    Must be within wasserstein distance
     """
     def __init__(self, ttk, beta):
         TransitionKernel.__init__(self, ttk)
@@ -81,4 +94,5 @@ class TransitionKernelBeta(TransitionKernel):
 
     def draw(self):
         # todo: implement how to draw given some beta
-        return
+        # todo: replace ttk by a drawn ttk
+        return ttk

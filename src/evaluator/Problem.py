@@ -2,7 +2,7 @@ import numpy as _np
 import mdptoolbox.example
 from TransitionKernel import TransitionKernelVar, TransitionKernelInterval
 import abc
-import Options
+from Options import Options
 
 
 """
@@ -75,8 +75,8 @@ class ForestProblem(Problem):
         ttk, reward_matrix = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
 
         # recompute ttk for upper and lower value of p
-        ttk_low = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p_low)
-        ttk_up = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p_up)
+        ttk_low, reward_low = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p_low)
+        ttk_up, reward_up = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p_up)
 
         # S x A -> A x S x S'
         reward_matrix = _np.transpose(reward_matrix)
