@@ -104,7 +104,7 @@ class Evaluator(object):
     def create_mdp_key(mdp_dict):
         mdp_key = mdp_dict[Options.TYPE_KEY]
 
-        if mdp_key == model_picker.ROBUST_MDP_KEY:
+        if mdp_key == model_picker.ROBUST_KEY:
             mdp_key += "-"+mdp_dict[Options.PARAMETERS_KEY][model_picker.SIGMA_IDENTIFIER_KEY]
 
         return mdp_key
