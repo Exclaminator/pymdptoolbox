@@ -93,11 +93,11 @@ class RobustModel(ValueIteration):
     >>> vi.iter
     2
     """
-    def __init__(self, true_transition_kernel, reward, discount, innerfunction, epsilon=0.01, max_iter=1000, initial_value=0,
+    def __init__(self, transition_kernel, reward, discount, innerfunction, epsilon=0.01, max_iter=1000, initial_value=0,
                  skip_check=False):
         # call parent constructor
-        ValueIteration.__init__(self, true_transition_kernel, reward, discount, epsilon, max_iter, initial_value, skip_check)
-
+        ValueIteration.__init__(self, transition_kernel.ttk, reward, discount, epsilon, max_iter, initial_value, skip_check)
+        self.transition_kernel = transition_kernel
         # bind context of inner function and make it accessable
         self.innerfunction = innerfunction(self)
 
@@ -148,7 +148,7 @@ class RobustModel(ValueIteration):
 
     class innerMethod:
         # Interval based model
-        def Interval(p_upper, p_lower):
+        def Interval():
             def innerInterval(self):
                 # if p_lower.shape == (self.S,):
                 #     self.p_lower = _np.repeat([_np.repeat([p_lower], self.S, axis=0)], self.A, axis=0)
@@ -165,6 +165,7 @@ class RobustModel(ValueIteration):
                     model = Model('IntervalModel')
                     mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
                     index = range(len(self.V))
+
                     lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
                     ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
                     for i in index:
@@ -176,8 +177,8 @@ class RobustModel(ValueIteration):
                     objective += mu
 
                     for i in index:
-                        objective += -(p_upper[action][state][i] * lu[i])
-                        objective += (p_lower[action][state][i] * ll[i])
+                        objective += -(self.transition_kernel.p_up[action][state][i] * lu[i])
+                        objective += (self.transition_kernel.p_low[action][state][i] * ll[i])
 
                     model.setObjective(objective, GRB.MAXIMIZE)
 
@@ -190,10 +191,14 @@ class RobustModel(ValueIteration):
             return innerInterval
 
         # Chi squared distance
-        def Elipsoid(beta):
+        def Elipsoid():
             def innerElipsoid(self):
                 def ElipsoidModel(state, action):
                     model = Model('ElipsoidModel')
+
+                    # get beta from transition kernel
+                    beta = self.transition_kernel.beta
+
                     pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
                     p = _np.transpose(_np.array(pGurobi.items()))[1]
                     objective = LinExpr()
@@ -216,10 +221,12 @@ class RobustModel(ValueIteration):
             return innerElipsoid
 
         # Wasserstein
-        def Wasserstein(beta):
+        def Wasserstein():
             def innerWasserstein(self):
                 def EMD(state, action):
                     model = Model('SigmaEMD')
+                    beta = self.transition_kernel.beta
+
                     pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
                     p = _np.transpose(_np.array(pGurobi.items()))[1]
                     emdGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="emd")
@@ -248,7 +255,7 @@ class RobustModel(ValueIteration):
             return innerWasserstein
 
         # Log likelihood model
-        def Likelihood(beta, delta):
+        def Likelihood(delta):
             def innerLikelihood(self):
                 self.bMax = _np.zeros(self.A)
                 for a in range(self.A):
@@ -256,13 +263,13 @@ class RobustModel(ValueIteration):
                         for j in range(self.S):
                             self.bMax[a] -= self.P[a][i][j]*math.log(self.P[a][i][j] + sys.float_info.epsilon)
 
-                if beta > _np.max(self.bMax):
+                if self.transition_kernel.beta > _np.max(self.bMax):
                     print("Beta will be cut of to " + str(_np.max(self.bMax)))
-                self.beta = _np.minimum(beta, _np.max(self.bMax))
+                self.transition_kernel.beta = _np.minimum(self.transition_kernel.beta, _np.max(self.bMax))
 
                 def computeSigmaMaximumLikelihoodModel(state, action):
                     mu_lower = _np.max(self.V)
-                    e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
+                    e_factor = math.pow(math.e, self.transition_kernel.beta - self.bMax[action]) - sys.float_info.epsilon
                     mu_upper = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
                     mu = (mu_upper + mu_lower)/2
                     while (mu_upper - mu_lower) > delta*(1+2*mu_lower):
@@ -274,7 +281,7 @@ class RobustModel(ValueIteration):
                     lmbda = lambdaLikelyhoodModel(mu, state, action)
                     if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
                         return mu
-                    return mu - (1 + self.beta)*lmbda + lmbda*_np.sum(
+                    return mu - (1 + self.transition_kernel.beta)*lmbda + lmbda*_np.sum(
                         _np.multiply(
                             self.P[action][state],
                             _np.log(sys.float_info.epsilon + _np.divide(
@@ -282,7 +289,7 @@ class RobustModel(ValueIteration):
                                     _np.subtract(_np.repeat(mu, self.S), self.V)))))
 
                 def derivativeOfSigmaLikelyhoodModel(mu, state, action):
-                    dsigma = - self.beta + _np.sum(
+                    dsigma = - self.transition_kernel.beta + _np.sum(
                         _np.multiply(
                             self.P[action][state],
                             _np.log(

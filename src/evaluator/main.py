@@ -40,12 +40,12 @@ def run_default():
             #         "delta": 0.1
             #     },
             # },
-            # {
-            #     "type": "robust",
-            #     "parameters": {
-            #         "sigma_identifier": "wasserstein"
-            #     },
-            # },
+            {
+                "type": "robust",
+                "parameters": {
+                    "sigma_identifier": "wasserstein"
+                },
+            },
             # {
             #     "type": "robust",
             #     "parameters": {
