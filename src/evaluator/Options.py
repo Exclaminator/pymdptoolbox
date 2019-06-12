@@ -4,7 +4,9 @@ class Options(object):
 
     # keys for the dict
     NUMBER_OF_PATHS = "number_of_paths"
-    T_MAX_DEF = "t_max_def"
+    T_MAX = "t_max_def"
+    NUMBER_OF_RUNS = "number_of_runs"
+
     SAVE_FIGURES = "save_figures"
     LOGGING_BEHAVIOR = "logging_behavior"
     FIX_INTERVAL = "fix_interval"
@@ -23,7 +25,8 @@ class Options(object):
 
     _default_dict = {
             NUMBER_OF_PATHS: 1,
-            T_MAX_DEF: 10,
+            T_MAX: 10,
+            NUMBER_OF_RUNS: 10,
             SAVE_FIGURES: True,
             LOGGING_BEHAVIOR: DEFAULT_KEY,
             NOISE_DIST: "gaussian",  # default: "gaussian" <- how the samples for ambiguity are drawn

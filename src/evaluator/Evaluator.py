@@ -76,7 +76,8 @@ class Evaluator(object):
 
             # do simulation
             if self.options.get(Options.DO_SIMULATION):
-                simulated_values = self.simulate_policy_on_problem(p_set, mdp.policy, problem)
+                simulated_values = self.simulate_policy_on_problem(
+                    p_set, mdp.policy, problem)
                 results_for_plotting[mdp_key, Evaluator.SIMULATED_KEY] = simulated_values
                 self.result_summary_to_logfile(simulated_values)
 
@@ -173,8 +174,7 @@ class Evaluator(object):
             values.append(V[0])
         return values
 
-    @staticmethod
-    def simulate_policy_on_problem(p_set, policy, problem, runs, t_max):
+    def simulate_policy_on_problem(self, p_set, policy, problem):
         values = []
         reward_matrix = problem.reward_matrix
         discount_factor = problem.discount_factor
@@ -182,11 +182,11 @@ class Evaluator(object):
         for P in p_set:
             values_for_P = []
 
-            for i in range(runs):
+            for i in range(self.options.get(Options.NUMBER_OF_RUNS)):
                 s = 0
                 total_reward = 0
 
-                for t in range(t_max):
+                for t in range(self.options.get(Options.T_MAX)):
                     action = policy[s]
                     P_a = P[action, s]
                     s_new = _np.random.choice(a=len(P_a), p=P_a)

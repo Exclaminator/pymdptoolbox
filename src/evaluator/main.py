@@ -1,4 +1,5 @@
 from Evaluator import Evaluator
+from Options import Options
 
 """
 default configuration, runs the forest problem on some models
@@ -7,7 +8,9 @@ default configuration, runs the forest problem on some models
 
 def run_default():
     options_dict = {
-        "number_of_paths": 100
+        "number_of_paths": 100,
+        Options.PLOT_HIST: True,
+        Options.DO_SIMULATION: True
     }
     problem_dict = {
         "format": "list",
@@ -15,7 +18,8 @@ def run_default():
             {
                 "type": "forest",
                 "parameters": {
-                    "variance": 0.1
+                    "p_low": 0.01,
+                    "p_up": 0.5
                 }
             }
         ]

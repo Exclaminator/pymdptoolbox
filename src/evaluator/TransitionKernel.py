@@ -66,7 +66,15 @@ class TransitionKernelInterval(TransitionKernel):
     Draws from a uniform distribution
     """
     def draw(self):
-        return _np.random.uniform(self.ttk_low, self.ttk_up)
+        newP = _np.random.uniform(self.ttk_low, self.ttk_up)
+
+        # normalize to sum=1
+        out = _np.zeros(newP.shape)
+        for i in range(newP.shape[0]):
+            for ii in range(newP.shape[1]):
+                out[i, ii, :] = newP[i, ii, :] / _np.sum(newP[i, ii, :])
+
+        return out
 
 
 class TransitionKernelVar(TransitionKernel):
