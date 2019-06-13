@@ -18,16 +18,19 @@ class Evaluator(object):
     create an evaluator, which can then be run.
     The arguments are dictionary objects.
     """
-    def __init__(self, problem_dict, options_dict):
+    def __init__(self, options_dict):
         self.options = Options(options_dict)
-        self.problem_list = self.parse_problem_dict(problem_dict)
+
+        # create problem list
+        # self.problem_lists = self.parse_problem_dict(problem_dict, mdp_set)
+
         self.log_dir = None
         self.file_to_write = None
 
     """
     Run the evaluator
     """
-    def run(self, mdp_set):
+    def run(self, problem_dict, mdp_dict):
 
         if self.options.is_default(Options.LOG_DIR):
             timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -38,6 +41,8 @@ class Evaluator(object):
         log_filename = self.log_dir + "results.log"
         os.makedirs(self.log_dir)
 
+        # create problem sets
+
         # create log file
         self.file_to_write = open(log_filename, "w+")
 
@@ -45,6 +50,21 @@ class Evaluator(object):
             self.run_problem(problem, mdp_set[Options.ELEMENTS_KEY])
 
         self.file_to_write.close()
+
+    def run_on_problem_set(self, problem_set):
+        large_problem_set = Sampler.create_large_problem_set()
+
+
+    def run_model_on_problem_set(self, problem_set, model, all_problems):
+        # use problem set to filter all problems
+        problem_list = problem_set.filter(all_problems)
+        results = []
+        for problem in problem_list:
+            # do this both for simulation and computation
+            results.append(policy_on_problem(model.policy, problem))
+
+        # do evaluation
+
 
     @staticmethod
     def parse_problem_dict(problems_dict):

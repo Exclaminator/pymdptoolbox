@@ -148,18 +148,18 @@ class RobustModel(ValueIteration):
 
     class innerMethod:
         # Interval based model
-        def Interval():
+        def Interval(p_low, p_up):
             def innerInterval(self):
-                ttk_low = self.transition_kernel.ttk_low
-                ttk_up = self.transition_kernel.ttk_up
-
-                if ttk_low.shape == (self.S,):
-                    self.transition_kernel.ttk_low = _np.repeat([_np.repeat([ttk_low], self.S, axis=0)], self.A, axis=0)
-                if ttk_up.shape == (self.S,):
-                    self.transition_kernel.ttk_up = _np.repeat([_np.repeat([ttk_up], self.S, axis=0)], self.A, axis=0)
-
-                assert ttk_low.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
-                assert ttk_up.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
+                # ttk_low = self.transition_kernel.ttk_low
+                # ttk_up = self.transition_kernel.ttk_up
+                #
+                # if ttk_low.shape == (self.S,):
+                #     self.transition_kernel.ttk_low = _np.repeat([_np.repeat([ttk_low], self.S, axis=0)], self.A, axis=0)
+                # if ttk_up.shape == (self.S,):
+                #     self.transition_kernel.ttk_up = _np.repeat([_np.repeat([ttk_up], self.S, axis=0)], self.A, axis=0)
+                # 
+                # assert ttk_low.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
+                # assert ttk_up.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
 
                 # p_lower = _np.maximum(p_lower, 0)
                 # p_upper = _np.minimum(p_upper, 1)
@@ -180,8 +180,8 @@ class RobustModel(ValueIteration):
                     objective += mu
 
                     for i in index:
-                        objective += -(self.transition_kernel.ttk_up[action][state][i] * lu[i])
-                        objective += (self.transition_kernel.ttk_low[action][state][i] * ll[i])
+                        objective += -(p_up[action][state][i] * lu[i])
+                        objective += (p_low[action][state][i] * ll[i])
 
                     model.setObjective(objective, GRB.MAXIMIZE)
 
@@ -195,7 +195,7 @@ class RobustModel(ValueIteration):
             return innerInterval
 
         # Chi squared distance
-        def Elipsoid():
+        def Elipsoid(beta):
             def innerElipsoid(self):
                 def ElipsoidModel(state, action):
                     model = Model('ElipsoidModel')
@@ -225,11 +225,11 @@ class RobustModel(ValueIteration):
             return innerElipsoid
 
         # Wasserstein
-        def Wasserstein():
+        def Wasserstein(beta):
             def innerWasserstein(self):
                 def EMD(state, action):
                     model = Model('SigmaEMD')
-                    beta = self.transition_kernel.beta
+                    # beta = self.transition_kernel.beta
 
                     pGurobi = model.addVars(self.S, vtype=GRB.CONTINUOUS, name="p")
                     p = _np.transpose(_np.array(pGurobi.items()))[1]
@@ -259,7 +259,7 @@ class RobustModel(ValueIteration):
             return innerWasserstein
 
         # Log likelihood model
-        def Likelihood(delta):
+        def Likelihood(beta, delta):
             def innerLikelihood(self):
                 self.bMax = _np.zeros(self.A)
                 for a in range(self.A):
@@ -269,7 +269,7 @@ class RobustModel(ValueIteration):
 
                 if self.transition_kernel.beta > _np.max(self.bMax):
                     print("Beta will be cut of to " + str(_np.max(self.bMax)))
-                self.transition_kernel.beta = _np.minimum(self.transition_kernel.beta, _np.max(self.bMax))
+                beta = _np.minimum(beta, _np.max(self.bMax))
 
                 def computeSigmaMaximumLikelihoodModel(state, action):
                     mu_lower = _np.max(self.V)
