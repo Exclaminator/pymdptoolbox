@@ -55,16 +55,15 @@ def _get_sigma_function(identifier, mdp_hyperparameters):
     Returns a corresponding sigma function, which can be used as an input for the robust methods.
     """
     # todo: implement based on youri's implementation
-
     # todo: at the moment the robust models assume the ambiguity is of a certain type, to make sure the intervals match
 
     if identifier == INTERVAL_KEY:
-        return RobustModel.innerMethod.Interval()
+        return RobustModel.innerMethod.Interval(mdp_hyperparameters[P_LOW_KEY], mdp_hyperparameters[P_UP_KEY])
     elif identifier == ELLIPSOID_KEY:
-        return RobustModel.innerMethod.Elipsoid()
+        return RobustModel.innerMethod.Elipsoid(mdp_hyperparameters[BETA_KEY])
     elif identifier == WASSERSTEIN_KEY:
-        return RobustModel.innerMethod.Wasserstein()
+        return RobustModel.innerMethod.Wasserstein(mdp_hyperparameters[BETA_KEY])
     elif identifier == MAX_LIKELIHOOD_KEY:
-        return RobustModel.innerMethod.Likelihood(mdp_hyperparameters[DELTA_KEY])
+        return RobustModel.innerMethod.Likelihood(mdp_hyperparameters[BETA_KEY], mdp_hyperparameters[DELTA_KEY])
     else:
         raise ValueError("invalid sigma identifier: " + identifier)
