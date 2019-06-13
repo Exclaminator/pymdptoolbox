@@ -106,3 +106,4 @@ class TransitionKernelBeta(TransitionKernel):
         # todo: implement how to draw given some beta
         # todo: replace ttk by a drawn ttk
         return ttk
+

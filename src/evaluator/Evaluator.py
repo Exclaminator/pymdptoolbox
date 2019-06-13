@@ -79,13 +79,13 @@ class Evaluator(object):
                 simulated_values = self.simulate_policy_on_problem(
                     p_set, mdp.policy, problem)
                 results_for_plotting[mdp_key, Evaluator.SIMULATED_KEY] = simulated_values
-                self.result_summary_to_logfile(simulated_values)
+                self.result_summary_to_logfile(simulated_values, Evaluator.SIMULATED_KEY)
 
             # do computation
             if self.options.get(Options.DO_COMPUTATION):
                 computed_values = self.compute_policy_on_problem(p_set, mdp.policy, problem)
                 results_for_plotting[mdp_key, Evaluator.COMPUTED_KEY] = computed_values
-                self.result_summary_to_logfile(computed_values)
+                self.result_summary_to_logfile(computed_values, Evaluator.COMPUTED_KEY)
 
         # make plots
         if ~self.options.get(Options.PLOT_DISABLED):
@@ -125,7 +125,7 @@ class Evaluator(object):
         pyplot.show()
         pyplot.close()
 
-    def result_summary_to_logfile(self, results):
+    def result_summary_to_logfile(self, results, description):
         average_value = _np.mean(results)
         variance = _np.var(results)
         lowest_value = _np.min(results)
@@ -134,13 +134,14 @@ class Evaluator(object):
         # maybe add "verbose" or "minimal" etc.
         if self.options.is_default(Options.LOGGING_BEHAVIOR):
             to_write = {
+                "description": description,
                 "average_value": average_value,
                 "variance": variance,
                 "lowest_value": lowest_value
             }
         else:
             to_write = {}
-        self.file_to_write.write(str(to_write))
+        self.file_to_write.write(str(to_write) + "\n")
 
     @staticmethod
     def compute_policy_on_problem(p_set, policy, problem):

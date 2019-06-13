@@ -33,19 +33,19 @@ def run_default():
                     mp.SIGMA_IDENTIFIER_KEY: mp.ELLIPSOID_KEY
                 },
             },
-            # {
-            #     Options.TYPE_KEY: mp.ROBUST_KEY,
-            #     Options.PARAMETERS_KEY: {
-            #         mp.SIGMA_IDENTIFIER_KEY: mp.MAX_LIKELIHOOD_KEY,
-            #         "delta": 0.1
-            #     },
-            # },
-            # {
-            #     "type": "robust",
-            #     "parameters": {
-            #         "sigma_identifier": "wasserstein"
-            #     },
-            # },
+            {
+                Options.TYPE_KEY: mp.ROBUST_KEY,
+                Options.PARAMETERS_KEY: {
+                    mp.SIGMA_IDENTIFIER_KEY: mp.MAX_LIKELIHOOD_KEY,
+                    "delta": 0.1
+                },
+            },
+            {
+                "type": "robust",
+                "parameters": {
+                    "sigma_identifier": "wasserstein"
+                },
+            },
             # {
             #     "type": "robust",
             #     "parameters": {

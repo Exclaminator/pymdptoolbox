@@ -136,14 +136,12 @@ def Robust(innerfunction):
             for s in range(self.S):
                 self.policy[s] = 0
                 for a in range(self.A):
-
                     # choose a corresponding sigma
                     self.sigma = self.innerfunction.run(s, a)
                     v_a = self.R[a][s] + self.discount * self.sigma
                     if v_a > v_next[s]:
                         v_next[s] = v_a
                         self.policy[s] = a
-
             #return policy
             self._endRun()
     return RobustModel

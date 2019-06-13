@@ -37,20 +37,20 @@ def create_mdp(mdp_as_dict, problem):
 
     if mdp_type == ROBUST_KEY:
         # todo: test this
-        sigma_function = _get_sigma_function(mdp_hyperparameters[SIGMA_IDENTIFIER_KEY],
-                                             transition_kernel, mdp_hyperparameters)
+        inner_function = _get_sigma_function(mdp_hyperparameters[SIGMA_IDENTIFIER_KEY],
+                                             mdp_hyperparameters)
         mdp_out = RobustModel(
-            transition_kernel.ttk, reward_matrix, discount=discount_factor, innerfunction=sigma_function
+            transition_kernel, reward_matrix, discount=discount_factor, innerfunction=inner_function
         )
 
     elif mdp_type == VALUE_KEY:
         mdp_out = mdptoolbox.mdp.ValueIteration(transition_kernel.ttk, reward_matrix, discount=discount_factor)
-        mdp_out.max_iter = 10000
+        # mdp_out.max_iter = 10000
     mdp_out.run()
     return mdp_out
 
 
-def _get_sigma_function(identifier, transition_kernel, mdp_hyperparameters):
+def _get_sigma_function(identifier, mdp_hyperparameters):
     """
     Returns a corresponding sigma function, which can be used as an input for the robust methods.
     """
@@ -59,12 +59,12 @@ def _get_sigma_function(identifier, transition_kernel, mdp_hyperparameters):
     # todo: at the moment the robust models assume the ambiguity is of a certain type, to make sure the intervals match
 
     if identifier == INTERVAL_KEY:
-        return RobustModel.innerMethod.Interval(transition_kernel.ttk_low, transition_kernel.ttk_up)
+        return RobustModel.innerMethod.Interval()
     elif identifier == ELLIPSOID_KEY:
-        return RobustModel.innerMethod.Elipsoid(transition_kernel.beta)
+        return RobustModel.innerMethod.Elipsoid()
     elif identifier == WASSERSTEIN_KEY:
-        return RobustModel.innerMethod.Wasserstein(transition_kernel.beta)
+        return RobustModel.innerMethod.Wasserstein()
     elif identifier == MAX_LIKELIHOOD_KEY:
-        return RobustModel.innerMethod.Likelihood(transition_kernel.beta, mdp_hyperparameters[DELTA_KEY])
+        return RobustModel.innerMethod.Likelihood(mdp_hyperparameters[DELTA_KEY])
     else:
         raise ValueError("invalid sigma identifier: " + identifier)
