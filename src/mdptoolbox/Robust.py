@@ -150,14 +150,17 @@ class RobustModel(ValueIteration):
         # Interval based model
         def Interval():
             def innerInterval(self):
-                # if p_lower.shape == (self.S,):
-                #     self.p_lower = _np.repeat([_np.repeat([p_lower], self.S, axis=0)], self.A, axis=0)
-                # if p_upper.shape == (self.S,):
-                #     self.p_upper = _np.repeat([_np.repeat([p_upper], self.S, axis=0)], self.A, axis=0)
-                #
-                # assert p_lower.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
-                # assert p_upper.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
-                #
+                ttk_low = self.transition_kernel.ttk_low
+                ttk_up = self.transition_kernel.ttk_up
+
+                if ttk_low.shape == (self.S,):
+                    self.transition_kernel.ttk_low = _np.repeat([_np.repeat([ttk_low], self.S, axis=0)], self.A, axis=0)
+                if ttk_up.shape == (self.S,):
+                    self.transition_kernel.ttk_up = _np.repeat([_np.repeat([ttk_up], self.S, axis=0)], self.A, axis=0)
+
+                assert ttk_low.shape == (self.A, self.S, self.S), "p_lower must be in the shape A*S*S or S*1."
+                assert ttk_up.shape == (self.A, self.S, self.S), "p_upper must be in the shape A*S*S or S*1."
+
                 # p_lower = _np.maximum(p_lower, 0)
                 # p_upper = _np.minimum(p_upper, 1)
 
@@ -177,8 +180,8 @@ class RobustModel(ValueIteration):
                     objective += mu
 
                     for i in index:
-                        objective += -(self.transition_kernel.p_up[action][state][i] * lu[i])
-                        objective += (self.transition_kernel.p_low[action][state][i] * ll[i])
+                        objective += -(self.transition_kernel.ttk_up[action][state][i] * lu[i])
+                        objective += (self.transition_kernel.ttk_low[action][state][i] * ll[i])
 
                     model.setObjective(objective, GRB.MAXIMIZE)
 
@@ -186,6 +189,7 @@ class RobustModel(ValueIteration):
                     model.setParam('OutputFlag', 0)
 
                     model.optimize()
+                    # todo: fix bug that causes "unable to retrieve attribute objVal "
                     return model.objVal
                 return IntervalModel
             return innerInterval

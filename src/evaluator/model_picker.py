@@ -37,15 +37,15 @@ def create_mdp(mdp_as_dict, problem):
 
     if mdp_type == ROBUST_KEY:
         # todo: test this
-        sigma_function = _get_sigma_function(mdp_hyperparameters[SIGMA_IDENTIFIER_KEY],
+        inner_function = _get_sigma_function(mdp_hyperparameters[SIGMA_IDENTIFIER_KEY],
                                              mdp_hyperparameters)
         mdp_out = RobustModel(
-            transition_kernel, reward_matrix, discount=discount_factor, innerfunction=sigma_function
+            transition_kernel, reward_matrix, discount=discount_factor, innerfunction=inner_function
         )
 
     elif mdp_type == VALUE_KEY:
         mdp_out = mdptoolbox.mdp.ValueIteration(transition_kernel.ttk, reward_matrix, discount=discount_factor)
-        mdp_out.max_iter = 10000
+        # mdp_out.max_iter = 10000
     mdp_out.run()
     return mdp_out
 

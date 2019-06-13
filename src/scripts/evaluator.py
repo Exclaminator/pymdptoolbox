@@ -440,7 +440,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options, beta=0.1, delta = 0.1):
             sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval"),
             beta = beta, delta = delta
         )
-        #mdp_out.setVerbose()
+        # mdp_out.setVerbose()
         if mdp_hyperparameters["sigma_identifier"] == "ellipsoid":
             mdp_out.max_iter = 1000
 
