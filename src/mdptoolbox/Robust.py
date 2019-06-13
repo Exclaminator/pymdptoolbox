@@ -102,6 +102,9 @@ def Robust(innerfunction):
             # bind context of inner function and make it accessable
             self.innerfunction = innerfunction
 
+        def getInnerfunction(self):
+            return innerfunction
+
         def run(self):
             # Run the modified policy iteration algorithm.
             self._startRun()
