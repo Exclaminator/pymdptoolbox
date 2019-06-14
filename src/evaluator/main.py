@@ -23,28 +23,28 @@ def run_default():
     # get tk_low and tk_up for the interval model
     forestProblem = Problem.create_forest_problem(S=30, discount_factor=0.9, r1=40, r2=2, p=0.05)
     tk = forestProblem.transition_kernel
-    tk_low = normalize_tk(tk-0.01)
+    tk_low = normalize_tk(tk-0.05)
     tk_up = normalize_tk(tk+0.05)
 
     options = Options(
         number_of_paths=100,
-        number_of_runs=300,
+        number_of_runs=100,
         plot_hist=True,
         do_simulation=False,
         evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.2,
-        sample_amount=1000,
+        sample_var=0.3,
+        sample_amount=3000,
     )
     problem_dict = {
         "forest": forestProblem
     }
     mdp_dict = {
-        "wasserstein-0.1": Robust(Wasserstein(0.1)),
-        "ellipsoid-0.1": Robust(Ellipsoid(0.1)),
+        "wasserstein-0.055": Robust(Wasserstein(0.06)),
+        "ellipsoid-0.1": Robust(Ellipsoid(0.03)),
         "value_iteration": ValueIteration,
-        "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.2)),
-        # "interval": Robust(Interval(tk_low, tk_up))
+        "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.1)),
+        #"interval": Robust(Interval(tk_low, tk_up))
     }
     Evaluator.build_and_run(problem_dict, mdp_dict, options)
 

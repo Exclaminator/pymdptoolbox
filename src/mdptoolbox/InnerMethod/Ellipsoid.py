@@ -11,16 +11,15 @@ class Ellipsoid(InnerMethod):
 
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
+        max_distance = 0
         for a in range(self.problem.A):
             for s in range(self.problem.S):
-                if sum(divide(multiply(
+                # I replaced self.problem.P[a][s] with len(self.problem.P[a][s]), which I think makes more sense
+                max_distance = maximum(sum(divide(multiply(
                             subtract(p[a][s], self.problem.P[a][s]),
                             subtract(p[a][s], self.problem.P[a][s])),
-                    # I replaced this with len(self.problem.P[a][s]) instead of self.problem.P[a][s],
-                        # which I think makes more sense
-                        len(self.problem.P[a][s]))) > self.beta:
-                    return False
-        return True
+                        len(self.problem.P[a][s]))), max_distance)
+        return max_distance < self.beta
 
     # calculate update scalar for inner method
     def run(self, state, action):

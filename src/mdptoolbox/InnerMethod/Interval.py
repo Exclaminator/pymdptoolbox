@@ -1,6 +1,7 @@
 from mdptoolbox.InnerMethod.InnerMethod import InnerMethod
 from gurobipy import *
 from numpy import *
+import scipy as sp
 
 
 class Interval(InnerMethod):
@@ -37,8 +38,10 @@ class Interval(InnerMethod):
     # calculate update scalar for inner method
     def run(self, state, action):
         model = Model('IntervalModel')
-        mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
         index = range(len(self.problem.V))
+        # shouldn't mu have i different values? Old version had 1x1 value instead of len(V)x1
+        mu = model.addVar(name="mu", vtype=GRB.CONTINUOUS,)
+
         lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
         ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
         for i in index:
@@ -47,7 +50,7 @@ class Interval(InnerMethod):
             model.addConstr(ll[i] >= 0)
 
         objective = LinExpr()
-        objective += mu
+        objective += mu #sp.eye(len(index))
 
         for i in index:
             objective += -(self.p_upper[action][state][i] * lu[i])
@@ -60,4 +63,5 @@ class Interval(InnerMethod):
 
         model.optimize()
         # todo: debug -> AttributeError: b"Unable to retrieve attribute 'objVal'"
+        # the equation seems to be infeasible
         return model.objVal

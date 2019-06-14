@@ -29,6 +29,7 @@ class Likelihood(InnerMethod):
     def inSample(self, p) -> bool:
         for a in range(self.problem.A):
             for s in range(self.problem.S):
+                # todo: debug, as it is comparing deep negative numbers with beta
                 if sum(self.problem.P[a][s]*log(p[a][s]+sys.float_info.epsilon)) > self.beta:
                     return False
         return True

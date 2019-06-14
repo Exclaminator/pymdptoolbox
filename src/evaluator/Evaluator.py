@@ -81,7 +81,7 @@ class Evaluator(object):
             result[INNER_KEY, COMPUTED_KEY], result[INNER_KEY, SIMULATED_KEY] = \
                 self.evaluate_policy_on_problem_list(policy, inner_samples)
 
-        # maybe just outer samples is interesting.
+        # maybe only the outer samples are interesting.
         # If you think so, uncomment and implement something for _np.difference that works
         # if self.options.get(Options.EVALUATE_OUTER):
         #     outer_samples = _np.difference(all_samples, inner_samples)

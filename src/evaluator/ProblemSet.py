@@ -10,8 +10,6 @@ class ProblemSet(object):
     def __init__(self, true_problem, mdp_init):
         self.true_problem = true_problem
         self.mdp_init = mdp_init
-        if hasattr(mdp_init, "innerfunction"):
-            self.innerfunction = mdp_init.innerfunction
 
     def filter(self, all_problems):
         # all_problems is a list instead of a ProblemSet object
