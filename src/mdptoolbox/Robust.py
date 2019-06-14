@@ -1,5 +1,5 @@
 import mdptoolbox.example
-from mdptoolbox.Wasserstein import Wasserstein
+from mdptoolbox.InnerMethod.Wasserstein import Wasserstein
 from mdptoolbox.mdp import ValueIteration
 import numpy as _np
 

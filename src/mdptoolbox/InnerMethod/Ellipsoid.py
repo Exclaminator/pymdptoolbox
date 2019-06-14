@@ -1,10 +1,10 @@
-from mdptoolbox.InnerMethod import InnerMethod
+from mdptoolbox.InnerMethod.InnerMethod import InnerMethod
 from gurobipy import *
 from numpy import *
 
 
-class Elipsoid(InnerMethod):
-    # Initialize Elipsoid
+class Ellipsoid(InnerMethod):
+    # Initialize Ellipsoid
     def __init__(self, beta):
         InnerMethod.__init__(self)
         self.beta = beta
@@ -22,7 +22,7 @@ class Elipsoid(InnerMethod):
 
     # calculate update scalar for inner method
     def run(self, state, action):
-        model = Model('ElipsoidModel')
+        model = Model('EllipsoidModel')
         pGurobi = model.addVars(self.problem.S, vtype=GRB.CONTINUOUS, name="p")
         p = transpose(array(pGurobi.items()))[1]
         objective = LinExpr()

@@ -26,8 +26,6 @@ Selects the corresponding type
 
 class Problem(object):
 
-    # KEY = Options.DEFAULT_KEY
-    # discount_KEY = "discount_factor"
     discount_def = 0.9
 
     """
@@ -41,7 +39,7 @@ class Problem(object):
     - distance based (d(p,P) <= beta)
     """
 
-    def __init__(self, transition_kernel, reward_matrix, discount_factor):
+    def __init__(self, transition_kernel, reward_matrix, discount_factor=discount_def):
         self.transition_kernel = transition_kernel
         self.reward_matrix = reward_matrix
         self.discount_factor = discount_factor

@@ -1,4 +1,4 @@
-from mdptoolbox.InnerMethod import InnerMethod
+from mdptoolbox.InnerMethod.InnerMethod import InnerMethod
 from numpy import *
 
 
