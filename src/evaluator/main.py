@@ -28,13 +28,13 @@ def run_default():
 
     options = Options(
         number_of_paths=100,
-        number_of_runs=100,
+        number_of_runs=300,
         plot_hist=True,
         do_simulation=False,
         evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.1,
-        sample_amount=100,
+        sample_var=0.2,
+        sample_amount=1000,
     )
     problem_dict = {
         "forest": forestProblem
@@ -42,8 +42,8 @@ def run_default():
     mdp_dict = {
         "wasserstein-0.1": Robust(Wasserstein(0.1)),
         "ellipsoid-0.1": Robust(Ellipsoid(0.1)),
-        #"value_iteration": ValueIteration,
-        #"max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.2)),
+        "value_iteration": ValueIteration,
+        "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.2)),
         # "interval": Robust(Interval(tk_low, tk_up))
     }
     Evaluator.build_and_run(problem_dict, mdp_dict, options)
