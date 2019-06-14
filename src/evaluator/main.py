@@ -31,10 +31,10 @@ def run_default():
         number_of_runs=100,
         plot_hist=True,
         do_simulation=True,
-        evaluate_all=False,
+        evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.15,
-        sample_amount=1000
+        sample_var=0.2,
+        sample_amount=10000
     )
     problem_dict = {
         "forest": forestProblem

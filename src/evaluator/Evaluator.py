@@ -1,5 +1,3 @@
-from Options import Options
-from Problem import Problem
 import json
 import ProblemSet
 import os
@@ -9,8 +7,8 @@ from matplotlib import pyplot
 import seaborn as sns
 import scipy as sp
 
-SIMULATED_KEY = "simulated_results"
-COMPUTED_KEY = "computed_results"
+SIMULATED_KEY = "simulated"
+COMPUTED_KEY = "computed"
 
 ALL_KEY = "all"
 INNER_KEY = "inner"
@@ -66,18 +64,10 @@ class Evaluator(object):
         self.plot_results(results)
         self.file_to_write.close()
 
-    ###############################
-
     def evaluate(self, problem_set, policy):
 
-        # todo: find some more sensible value for the variance and sample amount
-        #  It should be high enough to create outer samples for all ambiguity sets
-        #   or maybe let it base on something else than the variance
-        sample_var = self.options.sample_var
-        # defining sample_amount is a bit of magic, but makes some sort of sense
-        sample_amount = self.options.sample_amount #int(self.options.number_of_paths * 10)
-
-        all_samples = ProblemSet.create_large_problem_list(problem_set, sample_var, sample_amount)
+        # Create large problem set
+        all_samples = ProblemSet.create_large_problem_list(problem_set, self.options.sample_var, self.options.sample_amount)
 
         # store results
         result = {}
