@@ -38,11 +38,11 @@ class Interval(InnerMethod):
     def run(self, state, action):
         model = Model('IntervalModel')
         mu = model.addVar(vtype=GRB.CONTINUOUS, name="mu")
-        index = range(len(self.problem.v))
+        index = range(len(self.problem.V))
         lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
         ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
         for i in index:
-            model.addConstr(mu - lu[i] + ll[i] == self.problem.v[i])
+            model.addConstr(mu - lu[i] + ll[i] == self.problem.V[i])
             model.addConstr(lu[i] >= 0)
             model.addConstr(ll[i] >= 0)
 
@@ -59,4 +59,5 @@ class Interval(InnerMethod):
         model.setParam('OutputFlag', 0)
 
         model.optimize()
+        # todo: debug -> AttributeError: b"Unable to retrieve attribute 'objVal'"
         return model.objVal

@@ -1,5 +1,6 @@
 from mdptoolbox.InnerMethod.InnerMethod import InnerMethod
 from numpy import *
+import sys
 
 
 class Likelihood(InnerMethod):
@@ -8,11 +9,12 @@ class Likelihood(InnerMethod):
         InnerMethod.__init__(self)
         self.beta = beta
         self.delta = delta
-        self.bMax = zeros(self.problem.A)
+        self.bMax = None
 
     # attach problem
     def attachProblem(self, problem):
         InnerMethod.attachProblem(self, problem)
+        self.bMax = zeros(self.problem.A)
         for a in range(self.problem.A):
             for i in range(self.problem.S):
                 for j in range(self.problem.S):
@@ -27,7 +29,7 @@ class Likelihood(InnerMethod):
     def inSample(self, p) -> bool:
         for a in range(self.problem.A):
             for s in range(self.problem.S):
-                if sum(self.problem.P[a][s]*log(p[a][s])) > self.beta:
+                if sum(self.problem.P[a][s]*log(p[a][s]+sys.float_info.epsilon)) > self.beta:
                     return False
         return True
 
