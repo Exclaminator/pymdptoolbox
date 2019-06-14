@@ -16,7 +16,9 @@ class Ellipsoid(InnerMethod):
                 if sum(divide(multiply(
                             subtract(p[a][s], self.problem.P[a][s]),
                             subtract(p[a][s], self.problem.P[a][s])),
-                        self.problem.P[a][s] + sys.float_info.epsilon)) > self.beta:
+                    # I replaced this with len(self.problem.P[a][s]) instead of self.problem.P[a][s],
+                        # which I think makes more sense
+                        len(self.problem.P[a][s]))) > self.beta:
                     return False
         return True
 

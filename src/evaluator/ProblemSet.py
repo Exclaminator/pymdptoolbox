@@ -20,10 +20,10 @@ class ProblemSet(object):
         else:
             # non robust model
             return all_problems
-        # return all_problems.filter(self.mdp.innerfunction.inSample)
 
 
 def normalize_tk(tk_in):
+    tk_in = _np.abs(tk_in)
     tk_in = _np.minimum(tk_in, 1)
     tk_in = _np.maximum(tk_in, 0)
 
@@ -34,8 +34,6 @@ def normalize_tk(tk_in):
 
     return tk_out
 
-
-# mights skip the sampler due to static methods
 
 def create_large_problem_list(problem_set_in, variance, sample_amount):
     true_problem = problem_set_in.true_problem

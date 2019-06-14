@@ -29,8 +29,8 @@ class Problem(object):
         self.discount_factor = discount_factor
 
     @staticmethod
-    def create_forest_problem(state_amount=10, discount_factor=discount_def, r1=40, r2=20, p=0.05):
-        tk, reward_matrix = mdptoolbox.example.forest(S=state_amount, r1=r1, r2=r2, p=p)
+    def create_forest_problem(S=10, discount_factor=discount_def, r1=40, r2=20, p=0.05):
+        tk, reward_matrix = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
 
         # S x A -> A x S x S'
         reward_matrix = _np.transpose(reward_matrix)

@@ -106,7 +106,6 @@ class Evaluator(object):
 
         return results_computed, results_simulated
 
-    ###############################
 
     @staticmethod
     def compute_policy_on_problem(policy, problem):
@@ -168,13 +167,13 @@ class Evaluator(object):
             to_write = {
                 "mdp": mdp_key,
                 "problem": problem_key,
+                "policy": policy,
             }
             for (set_key, eval_key), values in results.items():
                 average_value = _np.mean(values)
                 variance = _np.var(values)
                 lowest_value = _np.min(values)
                 to_write[set_key + "-" + eval_key] = {
-                    "policy": policy,
                     "average_value": average_value,
                     "variance": variance,
                     "lowest_value": lowest_value,
@@ -216,8 +215,8 @@ class Evaluator(object):
             pyplot.title(title)
             pyplot.xlabel("Value")
             pyplot.ylabel("Frequency")
-            pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
             pyplot.legend(legend)
+            pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
 
         pyplot.show()
         pyplot.close()
