@@ -20,17 +20,19 @@ default configuration, runs the forest problem on some models
 
 def run_default():
 
+    # get tk_low and tk_up for the interval model
     forestProblem = Problem.create_forest_problem()
     tk = forestProblem.transition_kernel
     tk_low = normalize_tk(tk-0.01)
     tk_up = normalize_tk(tk+0.05)
 
     options = Options(
-        number_of_paths=500,
+        number_of_paths=300,
         number_of_runs=100,
         plot_hist=True,
         do_simulation=True,
         evaluate_all=False,
+        evaluate_inner=True,
         sample_var=0.15,
         sample_amount=1000
     )

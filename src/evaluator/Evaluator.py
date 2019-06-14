@@ -199,22 +199,18 @@ class Evaluator(object):
     def plot_results(self, results):
 
         figures = {}
-        legend = set()
+        legend = []
 
         for (problem_key, mdp_key), mp_result in results.items():
             # create unique set of mdp_keys for legend
             if mdp_key not in legend:
-                legend.add(mdp_key)
+                legend.append(mdp_key)
 
             for (set_key, evaluation_key), values in mp_result.items():
                 # add figure to dict if not added
                 if (problem_key, set_key, evaluation_key) not in figures.keys():
                     # initialize figure
                     figure = pyplot.figure()
-                    title = problem_key + "-" + set_key + "-" + evaluation_key
-                    pyplot.title(title)
-                    pyplot.xlabel("Value")
-                    pyplot.ylabel("Frequency")
                     figures[problem_key, set_key, evaluation_key] = figure
                 else:
                     # set figure index
@@ -227,111 +223,14 @@ class Evaluator(object):
             # plot and show figure
             pyplot.figure(figure.number)
             title = problem_key + "-" + set_key + "-" + evaluation_key
+            pyplot.title(title)
+            pyplot.xlabel("Value")
+            pyplot.ylabel("Frequency")
             pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
             pyplot.legend(legend)
 
         pyplot.show()
         pyplot.close()
-
-
-    # @staticmethod
-    # def parse_problem_dict(problems_dict):
-    #     result = []
-    #     # the environment type can be used to define a different format than a list
-    #     # at the moment we only support the "list" type
-    #     for problem in problems_dict[Options.ELEMENTS_KEY]:
-    #         result.append(Problem.create_problem_by_dict(problem))
-    #     return result
-    #
-    # def run_problem(self, problem, mdp_list):
-    #     # create P set
-    #     p_set = []
-    #     for i in range(self.options.get(Options.NUMBER_OF_PATHS)):
-    #         p_set.append(problem.transition_kernel.draw())
-    #
-    #     self.file_to_write.write(str(problem.KEY) + "\n")
-    #     results_for_plotting = {}
-    #
-    #     # compute mdp performance
-    #     for mdp_dict in mdp_list:
-    #         mdp = model_picker.create_mdp(mdp_dict, problem)
-    #         mdp_key = Evaluator.create_mdp_key(mdp_dict)
-    #         # do evaluation on results for this mdp and log it
-    #         self.file_to_write.write(mdp_key+":\n")
-    #         self.file_to_write.write("policy: "+str(mdp.policy)+"\n")
-    #         # self.file_to_write.write(str(evaluate_mdp_results(results_mdp_dict))+"\n")
-    #         # self.file_to_write.write("Value for original p: {} )\n".format(vp))
-    #
-    #         # do simulation
-    #         if self.options.get(Options.DO_SIMULATION):
-    #             simulated_values = self.simulate_policy_on_problem(
-    #                 p_set, mdp.policy, problem)
-    #             results_for_plotting[mdp_key, Evaluator.SIMULATED_KEY] = simulated_values
-    #             self.result_summary_to_logfile(simulated_values, Evaluator.SIMULATED_KEY)
-    #
-    #         # do computation
-    #         if self.options.get(Options.DO_COMPUTATION):
-    #             computed_values = self.compute_policy_on_problem(p_set, mdp.policy, problem)
-    #             results_for_plotting[mdp_key, Evaluator.COMPUTED_KEY] = computed_values
-    #             self.result_summary_to_logfile(computed_values, Evaluator.COMPUTED_KEY)
-    #
-    #     # make plots
-    #     if ~self.options.get(Options.PLOT_DISABLED):
-    #         # retrieving the corresponding keys for the plots
-    #         keys_tuples = list(results_for_plotting.keys())
-    #
-    #         if self.options.get(Options.DO_SIMULATION):
-    #             keys_simulated = list(filter(lambda x: x[1] == Evaluator.SIMULATED_KEY, keys_tuples))
-    #             self.make_figure_plot(results_for_plotting, keys_simulated, problem.KEY + " simulated")
-    #
-    #         if self.options.get(Options.DO_COMPUTATION):
-    #             keys_computed = list(filter(lambda x: x[1] == Evaluator.COMPUTED_KEY, keys_tuples))
-    #             self.make_figure_plot(results_for_plotting, keys_computed, problem.KEY + " computed")
-    #
-    # @staticmethod
-    # def create_mdp_key(mdp_dict):
-    #     mdp_key = mdp_dict[Options.TYPE_KEY]
-    #
-    #     if mdp_key == model_picker.ROBUST_KEY:
-    #         mdp_key += "-"+mdp_dict[Options.PARAMETERS_KEY][model_picker.SIGMA_IDENTIFIER_KEY]
-    #
-    #     return mdp_key
-    #
-    # def make_figure_plot(self, values, keys, title):
-    #     legend = []
-    #     results = [values[x] for x in keys]
-    #     for i in range(len(results)):
-    #         sns.distplot(results[i], hist=self.options.get(Options.PLOT_HIST), label=keys[i][0])
-    #     #  legend.append(keys[i][0])
-    #
-    #     pyplot.title(title)
-    #     pyplot.xlabel("Value")
-    #     pyplot.ylabel("Frequency")
-    #     pyplot.legend()
-    #
-    #     pyplot.savefig(self.log_dir + title + ".png", dpi=150, format="png")
-    #     pyplot.show()
-    #     pyplot.close()
-    #
-    # def result_summary_to_logfile(self, results, description):
-    #     average_value = _np.mean(results)
-    #     variance = _np.var(results)
-    #     lowest_value = _np.min(results)
-    #
-    #     # define logging behavior here
-    #     # maybe add "verbose" or "minimal" etc.
-    #     if self.options.is_default(Options.LOGGING_BEHAVIOR):
-    #         to_write = {
-    #             "description": description,
-    #             "average_value": average_value,
-    #             "variance": variance,
-    #             "lowest_value": lowest_value
-    #         }
-    #     else:
-    #         to_write = {}
-    #     self.file_to_write.write(str(to_write) + "\n")
-
-
 
 
 

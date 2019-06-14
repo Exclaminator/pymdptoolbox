@@ -1,6 +1,5 @@
 import numpy as _np
 import mdptoolbox.example
-from TransitionKernel import TransitionKernelVar, TransitionKernelInterval
 import abc
 from Options import Options
 
@@ -9,19 +8,6 @@ from Options import Options
 creates a problem from a dict.
 Selects the corresponding type
 """
-
-
-# def create_problem_by_dict(problem_dict):
-#     problem_type = problem_dict[Options.TYPE_KEY]
-#     parameters_dict = problem_dict[Options.PARAMETERS_KEY]
-#     if problem_type == ForestProblem.KEY:
-#         return ForestProblem.from_dict(parameters_dict)
-#     elif problem_type == RandomProblem.KEY:
-#         return RandomProblem.from_dict(parameters_dict)
-
-
-# def _retrieve_else(dictionary, field, default):
-#     return dictionary[field] if field in dictionary else default
 
 
 class Problem(object):

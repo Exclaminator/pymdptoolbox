@@ -1,6 +1,7 @@
 import numpy as _np
 from Problem import Problem
 
+
 class ProblemSet(object):
     """
     representation of a collection of problems.
