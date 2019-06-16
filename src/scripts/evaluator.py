@@ -52,7 +52,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict, test_argume
         for mdp_dict in mdp_pair_list:
             mdp_type = mdp_dict["type"]
             # create an identifier for the legend and naming
-            #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+            # mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
             mdp_id = mdp_type
             if "sigma_identifier" in  mdp_dict["parameters"]:
                 mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
@@ -126,7 +126,7 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict, test_argume
                     for mdp_dict in mdp_pair_list:
                         mdp_type = mdp_dict["type"]
                         # create an identifier for the legend and naming
-                        #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
+                        # mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
                         mdp_id = mdp_type
                         if "sigma_identifier" in  mdp_dict["parameters"]:
                             mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
@@ -273,8 +273,6 @@ def compute_value_for_policy_on_problem(policy, problem, options):
 
     def computeRPolicy(state):
         return R[policy[state], state, :]
-
-
 
     # hacky conversion using list (otherwise it will return non-numeric objects)
     P_arr = _np.array(list(map(computePPolicy, range(S))))
@@ -440,7 +438,7 @@ def create_mdp_from_dict(mdp_as_dict, problem, options, beta=0.1, delta = 0.1):
             sigma_identifier=retrieve_from_dict(mdp_hyperparameters, "sigma_identifier", "interval"),
             beta = beta, delta = delta
         )
-        #mdp_out.setVerbose()
+        # mdp_out.setVerbose()
         if mdp_hyperparameters["sigma_identifier"] == "ellipsoid":
             mdp_out.max_iter = 1000
 
