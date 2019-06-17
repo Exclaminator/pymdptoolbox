@@ -554,34 +554,34 @@ Main code to run, which takes arguments and calls functions
 # test with some default parameters
 run_multi(
     mdp_pair_list=[
-        {
-            "type": "robust",
-            "parameters": {
-                # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
-                # By default z=3 (corresponds to a uniform distribution)
-                # "sigma_interval_factor": 3
-                "sigma_identifier": "ellipsoid"
-            },
-
-        },
+        # {
+        #     "type": "robust",
+        #     "parameters": {
+        #         # define z, in the equation "mu +/- sqrt(z*var)" for defining p_low and p_up.
+        #         # By default z=3 (corresponds to a uniform distribution)
+        #         # "sigma_interval_factor": 3
+        #         "sigma_identifier": "ellipsoid"
+        #     },
+        #
+        # },
         {
          "type": "robust",
          "parameters": {
              "sigma_identifier": "max_like"
          },
         },
-        {
-            "type": "robust",
-            "parameters": {
-                "sigma_identifier": "wasserstein"
-            },
-        },
-        {
-            "type": "robust",
-            "parameters": {
-                "sigma_identifier": "interval"
-            },
-        },
+        # {
+        #     "type": "robust",
+        #     "parameters": {
+        #         "sigma_identifier": "wasserstein"
+        #     },
+        # },
+        # {
+        #     "type": "robust",
+        #     "parameters": {
+        #         "sigma_identifier": "interval"
+        #     },
+        # },
         {
             "type": "valueIteration",
             "parameters": {}
@@ -622,8 +622,8 @@ run_multi(
         ],
     },
     test_arguments={
-        "variance": [0.1 * x / 3 for x in range(1, 10)],
-        "beta": [0.2],
+        "variance": [0.2],
+        "beta": [-0.4],
         "delta": [0.2]
     }
 )

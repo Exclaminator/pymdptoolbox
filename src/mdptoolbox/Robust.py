@@ -367,9 +367,9 @@ class RobustModel(ValueIteration):
 
     # non linear model, cannot be solved by Gurobi
     def computeSigmaMaximumLikelihoodModel(self, state, action):
-        mu_lower = _np.max(self.V)
-        e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
-        mu_upper = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
+        mu_upper = _np.min(self.V)
+        e_factor = math.pow(math.e,  self.beta) - sys.float_info.epsilon
+        mu_lower = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
         mu = (mu_upper + mu_lower)/2
         while (mu_upper - mu_lower) > self.delta*(1+2*mu_lower):
             mu = (mu_upper + mu_lower)/2
@@ -380,25 +380,25 @@ class RobustModel(ValueIteration):
         lmbda = self.lambdaLikelyhoodModel(mu, state, action)
         if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
             return mu
-        return mu - (1 + self.beta)*lmbda + lmbda*_np.sum(
+        return mu + (1 + self.beta)*lmbda - lmbda*_np.sum(
             _np.multiply(
                 self.P[action][state],
                 _np.log(sys.float_info.epsilon + _np.divide(
                         self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
-                        _np.subtract(_np.repeat(mu, self.S), self.V)))))
+                        _np.subtract(self.V, _np.repeat(mu, self.S))))))
 
     def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma = - self.beta + _np.sum(
+        dsigma = self.beta - _np.sum(
             _np.multiply(
                 self.P[action][state],
                 _np.log(
                     sys.float_info.epsilon +
                     _np.divide(
                         self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
-                        _np.subtract(_np.repeat(mu, self.S), self.V)+ sys.float_info.epsilon))))
-        dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power(mu * _np.ones(self.S) - self.V, 2)))
-        dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state], mu * _np.ones(self.S) - self.V)), 2)
+                        _np.subtract(self.V, _np.repeat(mu, self.S))+ sys.float_info.epsilon))))
+        dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power( self.V - mu * _np.ones(self.S), 2)))
+        dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state],  self.V - mu * _np.ones(self.S))), 2)
         return dsigma
 
     def lambdaLikelyhoodModel(self, mu, state, action):
-        return 1 / _np.sum(_np.divide(self.P[action][state], mu*_np.ones(self.S) - self.V + sys.float_info.epsilon))
+        return 1 / _np.sum(_np.divide(self.P[action][state], self.V - mu*_np.ones(self.S) + sys.float_info.epsilon))
