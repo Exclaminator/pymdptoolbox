@@ -22,14 +22,13 @@ class ProblemSet(object):
 
 def normalize_tk(tk_in):
     tk_in = _np.abs(tk_in)
-    tk_in = _np.minimum(tk_in, 1)
+    #tk_in = _np.minimum(tk_in, 1) #todo check if we want to do this, 1 is ensured by normaliztion, clipping it here will reduce its value in normaliztion
     tk_in = _np.maximum(tk_in, 0)
 
     tk_out = _np.zeros(tk_in.shape)
     for i in range(tk_in.shape[0]):
         for ii in range(tk_in.shape[1]):
             tk_out[i, ii, :] = tk_in[i, ii, :] / _np.sum(tk_in[i, ii, :])
-
     return tk_out
 
 

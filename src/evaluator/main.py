@@ -21,20 +21,20 @@ default configuration, runs the forest problem on some models
 def run_default():
 
     # get tk_low and tk_up for the interval model
-    forestProblem = Problem.create_forest_problem(S=30, discount_factor=0.9, r1=40, r2=2, p=0.05)
+    forestProblem = Problem.create_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
     tk = forestProblem.transition_kernel
-    tk_low = (tk-0.05).clip(min=0)
-    tk_up = (tk+0.05).clip(max=1)
+    tk_low = (tk-0.3).clip(min=0)
+    tk_up = (tk+0.3).clip(max=1)
 
     options = Options(
-        number_of_paths=100,
-        number_of_runs=1000,
+        number_of_paths=1000,
+        number_of_runs=1000, #TODO rename to number_of_sims
         plot_hist=True,
         do_simulation=False,
         evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.3,
-        sample_amount=10000,
+        sample_var=0.05,
+        sample_amount=100000,
     )
     problem_dict = {
         "forest": forestProblem

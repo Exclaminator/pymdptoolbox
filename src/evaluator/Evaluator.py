@@ -54,10 +54,11 @@ class Evaluator(object):
         results = {}
 
         for problem_key, problem in problem_dict.items():
+            print(problem_key)
             all_samples = ProblemSet.create_large_problem_list(problem, self.options.sample_var,
                                                                self.options.sample_amount)
             for mdp_key, mdp in mdp_dict.items():
-
+                print(mdp_key)
                 mdp_init = mdp(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
                 ps = ProblemSet.ProblemSet(all_samples, mdp_init)
                 mdp_init.run()
