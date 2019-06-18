@@ -6,7 +6,7 @@ import scipy as sp
 
 class Interval(InnerMethod):
     # Initialize Interval
-    def __init__(self, p_upper, p_lower):
+    def __init__(self, p_lower, p_upper):
         InnerMethod.__init__(self)
         self.p_upper = p_upper
         self.p_lower = p_lower

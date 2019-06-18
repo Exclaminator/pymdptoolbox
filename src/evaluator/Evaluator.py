@@ -99,10 +99,12 @@ class Evaluator(object):
         # use problem set to filter all problems
         results_computed = []
         results_simulated = []
+
         for problem in problem_list:
             # do this both for simulation and computation
             results_computed.append(self.compute_policy_on_problem(policy, problem))
-            results_simulated.append(self.simulate_policy_on_problem(policy, problem))
+            if self.options.do_simulation:
+                results_simulated.append(self.simulate_policy_on_problem(policy, problem))
 
         return results_computed, results_simulated
 
@@ -170,6 +172,8 @@ class Evaluator(object):
                 "policy": policy,
             }
             for (set_key, eval_key), values in results.items():
+                if len(values) == 0:
+                    continue
                 average_value = _np.mean(values)
                 variance = _np.var(values)
                 lowest_value = _np.min(values)
@@ -196,6 +200,8 @@ class Evaluator(object):
                 legend.append(mdp_key)
 
             for (set_key, evaluation_key), values in mp_result.items():
+                if len(values) == 0:
+                    continue
                 # add figure to dict if not added
                 if (problem_key, set_key, evaluation_key) not in figures.keys():
                     # initialize figure
