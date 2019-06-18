@@ -6,6 +6,7 @@ import numpy as _np
 from matplotlib import pyplot
 import seaborn as sns
 import scipy as sp
+import warnings
 
 SIMULATED_KEY = "simulated"
 COMPUTED_KEY = "computed"
@@ -53,10 +54,12 @@ class Evaluator(object):
         results = {}
 
         for problem_key, problem in problem_dict.items():
+            all_samples = ProblemSet.create_large_problem_list(problem, self.options.sample_var,
+                                                               self.options.sample_amount)
             for mdp_key, mdp in mdp_dict.items():
 
                 mdp_init = mdp(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
-                ps = ProblemSet.ProblemSet(problem, mdp_init)
+                ps = ProblemSet.ProblemSet(all_samples, mdp_init)
                 mdp_init.run()
                 results[problem_key, mdp_key] = self.evaluate(ps, mdp_init.policy)
                 self.log_results(problem_key, mdp_key, mdp_init.policy, results[problem_key, mdp_key])
@@ -67,7 +70,7 @@ class Evaluator(object):
     def evaluate(self, problem_set, policy):
 
         # Create large problem set
-        all_samples = ProblemSet.create_large_problem_list(problem_set, self.options.sample_var, self.options.sample_amount)
+        all_samples = problem_set.all_samples
 
         # store results
         result = {}
@@ -95,6 +98,8 @@ class Evaluator(object):
         number_of_paths = self.options.number_of_paths
         if len(problem_list) > number_of_paths:
             problem_list = problem_list[0:number_of_paths]
+        else:
+            warnings.warn("number_of_paths ({}) is larger than the number of filtered policies ({})".format(number_of_paths, len(problem_list)))
 
         # use problem set to filter all problems
         results_computed = []

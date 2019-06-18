@@ -7,8 +7,8 @@ class ProblemSet(object):
     representation of a collection of problems.
     """
 
-    def __init__(self, true_problem, mdp_init):
-        self.true_problem = true_problem
+    def __init__(self, all_samples, mdp_init):
+        self.all_samples = all_samples
         self.mdp_init = mdp_init
 
     def filter(self, all_problems):
@@ -33,8 +33,7 @@ def normalize_tk(tk_in):
     return tk_out
 
 
-def create_large_problem_list(problem_set_in, variance, sample_amount):
-    true_problem = problem_set_in.true_problem
+def create_large_problem_list(true_problem, variance, sample_amount):
     ttk = true_problem.transition_kernel
     # draw from normal
     # index 1 and 2 are kernel indices, 3 is the sample index
