@@ -201,11 +201,7 @@ class Evaluator(object):
         legend = []
 
         for (problem_key, mdp_key), mp_result in results.items():
-            # create unique set of mdp_keys for legend
-            if mdp_key not in legend:
-                legend.append(mdp_key)
-
-            for (set_key, evaluation_key), values in mp_result.items():
+             for (set_key, evaluation_key), values in mp_result.items():
                 if len(values) == 0:
                     continue
                 # add figure to dict if not added
@@ -218,7 +214,7 @@ class Evaluator(object):
                     pyplot.figure(figures[problem_key, set_key, evaluation_key].number)
 
                 # plot to the figure which is initialized in the if statement above
-                sns.distplot(values, hist=self.options.plot_hist)
+                sns.distplot(values, hist=self.options.plot_hist, label=mdp_key)
 
         for (problem_key, set_key, evaluation_key), figure in figures.items():
             # plot and show figure
@@ -227,7 +223,7 @@ class Evaluator(object):
             pyplot.title(title)
             pyplot.xlabel("Value")
             pyplot.ylabel("Frequency")
-            pyplot.legend(legend)
+            pyplot.legend()
             pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
 
         pyplot.show()
