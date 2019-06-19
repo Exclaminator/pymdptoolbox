@@ -1,7 +1,6 @@
 from Evaluator import Evaluator
 from Options import Options
 from mdptoolbox.Robust import *
-from ProblemSet import normalize_tk
 
 from mdptoolbox.mdp import ValueIteration
 
