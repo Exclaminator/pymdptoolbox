@@ -2,15 +2,7 @@ import numpy as _np
 import mdptoolbox.example
 import warnings
 import scipy as sp
-
-
-SIMULATED_KEY = "simulated"
-COMPUTED_KEY = "computed"
-
-ALL_KEY = "all"
-INNER_KEY = "inner"
-OUTER_KEY = "outer"
-FILTER_RATIO_KEY = "filter_ratio"
+from evaluator.Evaluator import Sampling
 
 """
 creates a problem from a dict.
@@ -141,10 +133,13 @@ class ProblemSet(object):
     """
     representation of a collection of problems.
     """
-    def __init__(self, samples, problem, options):
+    def __init__(self, samples, problem, options, sampling=Sampling.ALL):
         self.samples = samples
         self.problem = problem
         self.options = options
+        self.sampling = sampling
+        self.resultsComputed = []
+        self.resultsSimulated = []
 
         # limit on the number of paths
         if len(self.samples) > self.options.number_of_paths:
@@ -154,25 +149,30 @@ class ProblemSet(object):
                 "number_of_paths ({}) is larger than the number of filtered policies ({})"
                     .format(self.options.number_of_paths, len(self.samples)))
 
-    def filter(self, mdp):
+    def split(self, mdp):
         # all_problems is a list instead of a ProblemSet object
         if hasattr(mdp, "innerfunction"):
             return ProblemSet(
                 [x for x in self.samples if mdp.innerfunction.inSample(x.transition_kernel)],
                 self.problem,
-                self.options)
+                self.options,
+                Sampling.IN_SAMPLING), ProblemSet(
+                [x for x in self.samples if not mdp.innerfunction.inSample(x.transition_kernel)],
+                self.problem,
+                self.options,
+                Sampling.IN_SAMPLING)
+
         else:
             # non robust model
             return self
 
-    def evaluate(self, mdp):
-        results_computed = []
-        results_simulated = []
-
+    def computeMDP(self, mdp):
         for problem in self.samples:
-            # do this both for simulation and computation
-            results_computed.append(problem.computeMDP(mdp))
-            if self.options.do_simulation:
-                results_simulated.append(problem.simulateMDP(mdp, self.options))
+            self.resultsComputed.append(problem.computeMDP(mdp))
+        return self.resultsComputed
 
-        return results_computed, results_simulated
+    #  if self.options.do_simulation:
+    def simulateMDP(self, mdp):
+        for problem in self.samples:
+            self.resultsSimulated.append(problem.simulateMDP(mdp, self.options))
+        return self.resultsSimulated
