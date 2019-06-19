@@ -106,8 +106,11 @@ def Robust(innerfunction):
             self.v_next = full(self.V.shape, -inf)
             self.sigma = 0
 
+        def getName(self):
+            return self.innerfunction.getName()
+
         def getInnerfunction(self):
-            return innerfunction
+            return self.innerfunction
 
         def run(self):
             # Run the modified policy iteration algorithm.
@@ -165,12 +168,20 @@ class InnerMethod:
     def inSample(self, p, p2) -> bool:
         pass
 
+    @abstractmethod
+    def getName(self):
+        pass
+
 
 class Ellipsoid(InnerMethod):
     # Initialize Ellipsoid
     def __init__(self, beta):
         InnerMethod.__init__(self)
         self.beta = beta
+
+    # get name
+    def getName(self):
+        return "Ellipsoid(" + str(self.beta) + ")"
 
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
@@ -213,6 +224,10 @@ class Interval(InnerMethod):
         InnerMethod.__init__(self)
         self.p_upper = p_upper
         self.p_lower = p_lower
+
+    # get name
+    def getName(self):
+        return "Interval"
 
     def attachProblem(self, problem):
         InnerMethod.attachProblem(self, problem)
@@ -277,6 +292,10 @@ class Likelihood(InnerMethod):
         self.beta = beta
         self.delta = delta
         self.bMax = None
+
+    # get name
+    def getName(self):
+        return "Likelihood(" + str(self.beta) + ", " + str(self.delta) + ")"
 
     # attach problem
     def attachProblem(self, problem):
@@ -348,6 +367,10 @@ class Wasserstein(InnerMethod):
         InnerMethod.__init__(self)
         self.beta = beta
 
+    # get name
+    def getName(self):
+        return "Wasserstein(" + str(self.beta) + ")"
+
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
         max_distance = 0;
@@ -387,7 +410,7 @@ class Wasserstein(InnerMethod):
 
 if __name__ == "__main__":
     P, R = mdptoolbox.example.forest()
-    m = Robust(Wasserstein(0.12))(P, R, 0.94);
+    m = Robust(Wasserstein(0.12))(P, R, 0.94)
     m.run()
     print(m.policy)
     print(m.V)
