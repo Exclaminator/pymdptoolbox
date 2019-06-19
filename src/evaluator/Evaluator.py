@@ -1,26 +1,15 @@
 import json
-import ProblemSet
 import os
 from datetime import datetime
 import numpy as _np
 from matplotlib import pyplot
 import seaborn as sns
-import scipy as sp
-import warnings
-
-SIMULATED_KEY = "simulated"
-COMPUTED_KEY = "computed"
-
-ALL_KEY = "all"
-INNER_KEY = "inner"
-OUTER_KEY = "outer"
-FILTER_RATIO_KEY = "filter_ratio"
-
 
 class Evaluator(object):
     """
     create an evaluator, which can then be run.
     The arguments are dictionary objects.
+    Opens a log file
     """
     def __init__(self, problems, mdpconstructors, options):
         # if there is a single problem make it a list
@@ -59,131 +48,32 @@ class Evaluator(object):
     Run the evaluator
     """
     def run(self):
+        # a place to store the results
         results = {}
 
+        # for all problems
         for problem_key, problem in enumerate(self.problems):
-            # print("Running problem: " + str(problem.get_name()))
-            ps = ProblemSet(problem, self.options)
+            # create a set with transition kernels similar to problem (as specified by options)
+            ps = problem.getProblemSet(self.options)
 
-            all_samples = ProblemSet.create_large_problem_list(problem, self.options.sample_var,
-                                                               self.options.sample_amount)
+            # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+
+                # build mdp for problem
                 mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
+
+                # output to the console
                 print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
-                ps = ProblemSet.ProblemSet(all_samples, mdp)
+
+                # run mdp
                 mdp.run()
-                results[problem_key, mdp_key], filter_ratio = self.evaluate(ps, mdp.policy)
+
+                # evaluate mdp on problem set
+                results[problem_key, mdp_key], filter_ratio = ps.evaluate(mdp)
                 self.log_results(problem_key, mdp_key, mdp.policy, results[problem_key, mdp_key], filter_ratio)
 
         self.plot_results(results)
         self.file_to_write.close()
-
-    def evaluate(self, problem_set, policy):
-
-        # Create large problem set
-        all_samples = problem_set.all_samples
-
-        # store results
-        result = {}
-
-        filter_ratio = 0
-
-        if self.options.evaluate_all:
-            result[ALL_KEY, COMPUTED_KEY], result[ALL_KEY, SIMULATED_KEY] = \
-                self.evaluate_policy_on_problem_list(policy, all_samples)
-
-        if self.options.evaluate_inner:
-            inner_samples = problem_set.filter(all_samples)
-
-            # store the ratio of filtered samples in results
-            # result[INNER_KEY, FILTER_RATIO_KEY]\
-            filter_ratio = len(inner_samples)/len(all_samples)
-
-            result[INNER_KEY, COMPUTED_KEY], result[INNER_KEY, SIMULATED_KEY] = \
-                self.evaluate_policy_on_problem_list(policy, inner_samples)
-
-        # maybe only the outer samples are interesting.
-        # If you think so, uncomment and implement something for _np.difference that works
-        # if self.options.get(Options.EVALUATE_OUTER):
-        #     outer_samples = _np.difference(all_samples, inner_samples)
-        #     result[OUTER_KEY, COMPUTED_KEY], result[OUTER_KEY, SIMULATED_KEY] = \
-        #         self.evaluate_policy_on_problem_list(policy, outer_samples)
-
-        return result, filter_ratio
-
-    def evaluate_policy_on_problem_list(self, policy, problem_list):
-        # limit on the number of paths
-        number_of_paths = self.options.number_of_paths
-        if len(problem_list) > number_of_paths:
-            problem_list = problem_list[0:number_of_paths]
-        else:
-            warnings.warn("number_of_paths ({}) is larger than the number of filtered policies ({})".format(number_of_paths, len(problem_list)))
-
-        # use problem set to filter all problems
-        results_computed = []
-        results_simulated = []
-
-        for problem in problem_list:
-            # do this both for simulation and computation
-            results_computed.append(self.compute_policy_on_problem(policy, problem))
-            if self.options.do_simulation:
-                results_simulated.append(self.simulate_policy_on_problem(policy, problem))
-
-        return results_computed, results_simulated
-
-
-    @staticmethod
-    def compute_policy_on_problem(policy, problem):
-        reward_matrix = problem.reward_matrix
-        transition_kernel = problem.transition_kernel
-
-        # P and R are A x S x S' shaped
-        state_amount = len(policy)
-        discount_factor = problem.discount_factor
-
-        def compute_tk_policy(state):
-            return transition_kernel[policy[state], state, :]
-
-        def compute_rm_policy(state):
-            return reward_matrix[policy[state], state, :]
-
-        # hacky conversion using list (otherwise it will return non-numeric objects)
-        tk_arr = _np.array(list(map(compute_tk_policy, range(state_amount))))
-        rm_arr = _np.array(list(map(compute_rm_policy, range(state_amount))))
-
-        rm_vector = _np.zeros(state_amount)
-        for i in range(state_amount):
-            for j in range(state_amount):
-                rm_vector[i] += rm_arr[i][j] * tk_arr[i][j]
-
-        V = _np.linalg.solve(
-            sp.eye(state_amount) - discount_factor * tk_arr,
-            rm_vector)
-
-        return V[0]
-
-    def simulate_policy_on_problem(self, policy, problem):
-        reward_matrix = problem.reward_matrix
-        discount_factor = problem.discount_factor
-        tk = problem.transition_kernel
-
-        results = []
-        for i in range(self.options.number_of_sims):
-            s_current = 0
-            total_reward = 0
-
-            for t in range(self.options.t_max):
-                action = policy[s_current]
-                tk_a = tk[action, s_current]
-                s_new = _np.random.choice(a=len(tk_a), p=tk_a)
-                # R is in format A x S x S'
-                rm_3d = reward_matrix[:, s_current, s_new]
-                total_reward += rm_3d[action] * _np.power(discount_factor, t)
-                s_current = s_new
-
-            results.append(total_reward)
-
-        return _np.mean(results)
 
     def log_results(self, problem_key, mdp_key, policy, results, filter_ratio):
         # define logging behavior here
@@ -217,7 +107,7 @@ class Evaluator(object):
     def plot_results(self, results):
 
         figures = {}
-        legend = []
+        # legend = []
 
         for (problem_key, mdp_key), mp_result in results.items():
              for (set_key, evaluation_key), values in mp_result.items():
