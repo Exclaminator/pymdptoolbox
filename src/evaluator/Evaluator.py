@@ -4,6 +4,19 @@ from datetime import datetime
 import numpy as _np
 from matplotlib import pyplot
 import seaborn as sns
+from enum import Enum
+
+
+class Sampling(Enum):
+    ALL = 1
+    IN_SAMPLING = 2
+    OUT_SAMPLING = 3
+
+
+class EvaluationMethod(Enum):
+    COMPUTED = 1
+    SIMULATED = 2
+
 
 class Evaluator(object):
     """
@@ -36,6 +49,8 @@ class Evaluator(object):
 
         # we have no results so far
         self.results = None
+        self.inner_samples = None
+        self.outer_samples = None
 
     """
     Run the destructor
@@ -58,6 +73,8 @@ class Evaluator(object):
 
             # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                # filter ratio per MDP
+                filter_ratio = 0
 
                 # build mdp for problem
                 mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
@@ -68,8 +85,48 @@ class Evaluator(object):
                 # run mdp
                 mdp.run()
 
+                # see if we need to evaluate on all results
+                if self.options.evaluate_all:
+                    results[problem_key, Sampling.ALL, EvaluationMethod.COMPUTED] = ps.computeMDP(mdp)
+                    results[problem_key, Sampling.ALL, EvaluationMethod.SIMULATED] = ps.simulateMDP(mdp)
+
+                    # result[ALL_KEY, COMPUTED_KEY], result[ALL_KEY, SIMULATED_KEY] = \
+                    #     self.evaluate_policy_on_problem_list(mdp.policy, self.samples)
+
+                # see if we need inner or outer samples
+                if self.options.evaluate_inner or self.options.evaluate_outer:
+                    self.inner_samples, self.outer_samples = ps.filter(mdp)
+
+                # see if we need to evaluate on inner results
+                if self.options.evaluate_inner:
+                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED] = \
+                        self.inner_samples.computeMDP(mdp)
+                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED] = \
+                        self.inner_samples.simulateMDP(mdp)
+
+                    # store the ratio of filtered samples in results
+                    # result[INNER_KEY, FILTER_RATIO_KEY]\
+                    filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
+
+                # see if we need to evaluate on outer results
+                if self.options.evaluate_outer:
+                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED] = \
+                        self.outer_samples.computeMDP(mdp)
+                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED] = \
+                        self.outer_samples.simulateMDP(mdp)
+
+
+                # maybe only the outer samples are interesting.
+                # If you think so, uncomment and implement something for _np.difference that works
+                #
+                #     outer_samples = _np.difference(self.samples, inner_samples)
+                #     result[OUTER_KEY, COMPUTED_KEY], result[OUTER_KEY, SIMULATED_KEY] = \
+                #         self.evaluate_policy_on_problem_list(policy, outer_samples)
+
+                # return result, filter_ratio
+
                 # evaluate mdp on problem set
-                results[problem_key, mdp_key], filter_ratio = ps.evaluate(mdp)
+                # results[problem_key, mdp_key], filter_ratio = ps.evaluate(mdp)
                 self.log_results(problem_key, mdp_key, mdp.policy, results[problem_key, mdp_key], filter_ratio)
 
         self.plot_results(results)
@@ -137,6 +194,4 @@ class Evaluator(object):
 
         pyplot.show()
         pyplot.close()
-
-
 
