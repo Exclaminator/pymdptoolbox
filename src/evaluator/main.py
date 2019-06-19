@@ -41,7 +41,7 @@ def run_default():
     }
     mdp_dict = {
         "wasserstein-0.055": Robust(Wasserstein(0.1)),
-        "ellipsoid-0.1": Robust(Ellipsoid(0.12)),
+        "ellipsoid-0.1": Robust(Ellipsoid(0.2)),
         "value_iteration": ValueIteration,
         "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.1)),
         "interval": Robust(Interval(tk_low, tk_up))
