@@ -1,6 +1,16 @@
 import numpy as _np
 import mdptoolbox.example
+import warnings
+import scipy as sp
 
+
+SIMULATED_KEY = "simulated"
+COMPUTED_KEY = "computed"
+
+ALL_KEY = "all"
+INNER_KEY = "inner"
+OUTER_KEY = "outer"
+FILTER_RATIO_KEY = "filter_ratio"
 
 """
 creates a problem from a dict.
@@ -31,9 +41,38 @@ class Problem(object):
 
     def getName(self):
         return self.name
-
-    def getProblemSet(self, options):
         
+    def getProblemSet(self, options):
+        variance = options.sample_var
+        sample_amount = options.sample_amount
+        ttk = self.transition_kernel
+
+        # draw from normal
+        # index 1 and 2 are kernel indices, 3 is the sample index
+        non_normalized_tks = _np.random.normal(_np.repeat(ttk[:, :, :, _np.newaxis], sample_amount, axis=3),
+                                               variance)
+        problems_out = []
+        for i in range(sample_amount):
+            tk = self.normalize_tk(non_normalized_tks[:, :, :, i])
+            new_problem = Problem(tk, self.reward_matrix, self.discount_factor)
+            # new_problem.transition_kernel = tk
+            problems_out.append(new_problem)
+
+        return ProblemSet(problems_out, self, options)
+
+    @staticmethod
+    def normalize_tk(tk_in):
+        tk_in = _np.abs(tk_in)
+        # todo: check if we want to do this, 1 is ensured by normaliztion,
+        #  clipping it here will reduce its value in normaliztion
+        # tk_in = _np.minimum(tk_in, 1)
+        tk_in = _np.maximum(tk_in, 0)
+
+        tk_out = _np.zeros(tk_in.shape)
+        for i in range(tk_in.shape[0]):
+            for ii in range(tk_in.shape[1]):
+                tk_out[i, ii, :] = tk_in[i, ii, :] / _np.sum(tk_in[i, ii, :])
+        return tk_out
 
     @staticmethod
     def get_forest_problem(S=10, discount_factor=discount_def, r1=40, r2=20, p=0.05):
