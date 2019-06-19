@@ -40,10 +40,10 @@ def run_default():
         "forest": forestProblem
     }
     mdp_dict = {
-        "wasserstein-0.055": Robust(Wasserstein(0.06)),
-        "ellipsoid-0.1": Robust(Ellipsoid(0.03)),
+        "wasserstein-0.06": Robust(Wasserstein(0.06)),
+        "ellipsoid-0.03": Robust(Ellipsoid(0.03)),
         "value_iteration": ValueIteration,
-        "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.1)),
+        "max_likelihood-0.2-0.1": Robust(Likelihood(0.2, 0.1)),
         "interval": Robust(Interval(tk_low, tk_up))
     }
     Evaluator.build_and_run(problem_dict, mdp_dict, options)
