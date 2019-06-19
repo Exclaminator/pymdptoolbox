@@ -23,13 +23,20 @@ class Problem(object):
     - distance based (d(p,P) <= beta)
     """
 
-    def __init__(self, transition_kernel, reward_matrix, discount_factor=discount_def):
+    def __init__(self, transition_kernel, reward_matrix, discount_factor=discount_def, name="undefined"):
         self.transition_kernel = transition_kernel
         self.reward_matrix = reward_matrix
         self.discount_factor = discount_factor
+        self.name = name
+
+    def getName(self):
+        return self.name
+
+    def getProblemSet(self, options):
+        
 
     @staticmethod
-    def create_forest_problem(S=10, discount_factor=discount_def, r1=40, r2=20, p=0.05):
+    def get_forest_problem(S=10, discount_factor=discount_def, r1=40, r2=20, p=0.05):
         tk, reward_matrix = mdptoolbox.example.forest(S=S, r1=r1, r2=r2, p=p)
 
         # S x A -> A x S x S'
@@ -37,12 +44,12 @@ class Problem(object):
         reward_matrix = _np.repeat(reward_matrix[:, :, _np.newaxis], reward_matrix.shape[1], axis=2)
 
         # create problem
-        return Problem(tk, reward_matrix, discount_factor)
+        return Problem(tk, reward_matrix, discount_factor, "forest")
 
     @staticmethod
-    def create_random_problem(state_amount=10, A=5, discount_factor=discount_def):
+    def get_random_problem(state_amount=10, A=5, discount_factor=discount_def):
         tk, reward_matrix = mdptoolbox.example.rand(state_amount, A, is_sparse=False)
         reward_matrix = _np.maximum(reward_matrix, 0)
 
-        return Problem(tk, reward_matrix, discount_factor)
+        return Problem(tk, reward_matrix, discount_factor, "random")
 
