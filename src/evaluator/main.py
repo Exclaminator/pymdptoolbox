@@ -28,20 +28,20 @@ def run_default():
 
     options = Options(
         number_of_paths=100,
-        number_of_runs=1000, #TODO rename to number_of_sims
+        number_of_sims=1000,
         plot_hist=True,
         do_simulation=False,
         evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.2,
-        sample_amount=10000,
+        sample_var=0.15,
+        sample_amount=1000,
     )
     problem_dict = {
         "forest": forestProblem
     }
     mdp_dict = {
-        "wasserstein-0.055": Robust(Wasserstein(0.06)),
-        "ellipsoid-0.1": Robust(Ellipsoid(0.03)),
+        "wasserstein-0.055": Robust(Wasserstein(0.1)),
+        "ellipsoid-0.1": Robust(Ellipsoid(0.12)),
         "value_iteration": ValueIteration,
         "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.1)),
         "interval": Robust(Interval(tk_low, tk_up))
