@@ -1,7 +1,9 @@
+from abc import abstractmethod
+from gurobipy import *
 import mdptoolbox.example
-from mdptoolbox.InnerMethod.Wasserstein import Wasserstein
 from mdptoolbox.mdp import ValueIteration
-import numpy as _np
+from numpy import *
+from scipy.stats import wasserstein_distance
 
 
 def Robust(innerfunction):
@@ -101,6 +103,8 @@ def Robust(innerfunction):
             innerfunction.attachProblem(self)
             # bind context of inner function and make it accessable
             self.innerfunction = innerfunction
+            self.v_next = full(self.V.shape, -inf)
+            self.sigma = 0
 
         def getInnerfunction(self):
             return innerfunction
@@ -108,14 +112,10 @@ def Robust(innerfunction):
         def run(self):
             # Run the modified policy iteration algorithm.
             self._startRun()
-            # TODO perhaps there can be a better initial guess. (v > 0)
-            self.V = _np.ones(self.S)
-            self.sigma = 0
 
             # Itterate
             while True:
                 self.iter += 1
-                self.v_next = _np.full(self.V.shape, -_np.inf)
 
                 # update value
                 for s in range(self.S):
@@ -125,7 +125,7 @@ def Robust(innerfunction):
                 if self.verbose:
                     print("iter {}/{}".format(self.iter, self.max_iter))
                 # see if there is no more improvement
-                if _np.linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
+                if linalg.norm(self.V - self.v_next) < (1 - self.discount) * self.epsilon / (2.0 * self.discount):
                     self.V = self.v_next
                     break
 
@@ -134,8 +134,8 @@ def Robust(innerfunction):
                     break
 
             # make policy
-            self.policy = _np.zeros(self.S, dtype=_np.int)
-            v_next = _np.full(self.V.shape, -_np.inf)
+            self.policy = zeros(self.S, dtype=int)
+            v_next = full(self.V.shape, -inf)
             for s in range(self.S):
                 self.policy[s] = 0
                 for a in range(self.A):
@@ -145,9 +145,244 @@ def Robust(innerfunction):
                     if v_a > v_next[s]:
                         v_next[s] = v_a
                         self.policy[s] = a
-            #return policy
+            # return policy
             self._endRun()
     return RobustModel
+
+
+class InnerMethod:
+    def __init__(self):
+        self.problem = None
+
+    def attachProblem(self, problem):
+        self.problem = problem
+
+    @abstractmethod
+    def run(self, state, action):
+        pass
+
+    @abstractmethod
+    def inSample(self, p, p2) -> bool:
+        pass
+
+
+class Ellipsoid(InnerMethod):
+    # Initialize Ellipsoid
+    def __init__(self, beta):
+        InnerMethod.__init__(self)
+        self.beta = beta
+
+    # see if a transition kernel p is in sample
+    def inSample(self, p) -> bool:
+        max_distance = 0
+        for a in range(self.problem.A):
+            for s in range(self.problem.S):
+                # I replaced self.problem.P[a][s] with len(self.problem.P[a][s]), which I think makes more sense
+                max_distance = maximum(sum(divide(multiply(
+                            subtract(p[a][s], self.problem.P[a][s]),
+                            subtract(p[a][s], self.problem.P[a][s])),
+                        len(self.problem.P[a][s]))), max_distance)
+        return max_distance < self.beta
+
+    # calculate update scalar for inner method
+    def run(self, state, action):
+        model = Model('EllipsoidModel')
+        pGurobi = model.addVars(self.problem.S, vtype=GRB.CONTINUOUS, name="p")
+        p = transpose(array(pGurobi.items()))[1]
+        objective = LinExpr()
+        objective += dot(p, self.problem.V)
+        model.setObjective(objective, GRB.MINIMIZE)
+        model.addConstr(sum(
+            divide(
+                multiply(
+                    subtract(p, self.problem.P[action][state]),
+                    subtract(p, self.problem.P[action][state])),
+                self.problem.P[action][state] + sys.float_info.epsilon
+            )) <= self.beta)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
+
+
+class Interval(InnerMethod):
+    # Initialize Interval
+    def __init__(self, p_lower, p_upper):
+        InnerMethod.__init__(self)
+        self.p_upper = p_upper
+        self.p_lower = p_lower
+
+    def attachProblem(self, problem):
+        InnerMethod.attachProblem(self, problem)
+        if self.p_lower.shape == (self.problem.S,):
+            self.p_lower = repeat([repeat([self.p_lower], self.problem.S, axis=0)], self.problem.A, axis=0)
+        if self.p_upper.shape == (self.problem.S,):
+            self.p_upper = repeat([repeat([self.p_upper], self.problem.S, axis=0)], self.problem.A, axis=0)
+
+        assert self.p_lower.shape == (self.problem.A, self.problem.S, self.problem.S),\
+            "p_lower must be in the shape A*S*S or S*1."
+        assert self.p_upper.shape == (self.problem.A, self.problem.S, self.problem.S),\
+            "p_upper must be in the shape A*S*S or S*1."
+
+        self.p_lower = maximum(self.p_lower, 0)
+        self.p_upper = minimum(self.p_upper, 1)
+
+    # see if a transition kernel p is in sample
+    def inSample(self, p) -> bool:
+        for a in range(self.problem.A):
+            for s in range(self.problem.S):
+                for s2 in range(self.problem.S):
+                    if p[a][s][s2] < self.p_lower[a][s][s2] or p[a][s][s2] > self.p_upper[a][s][s2]:
+                        return False
+        return True
+
+    # calculate update scalar for inner method
+    def run(self, state, action):
+        model = Model('IntervalModel')
+        index = range(len(self.problem.V))
+        # shouldn't mu have i different values? Old version had 1x1 value instead of len(V)x1
+        mu = model.addVar(name="mu", vtype=GRB.CONTINUOUS,)
+
+        lu = model.addVars(index, name="lu", vtype=GRB.CONTINUOUS)
+        ll = model.addVars(index, name="ll", vtype=GRB.CONTINUOUS)
+        for i in index:
+            model.addConstr(mu - lu[i] + ll[i] == self.problem.V[i])
+            model.addConstr(lu[i] >= 0)
+            model.addConstr(ll[i] >= 0)
+
+        objective = LinExpr()
+        objective += mu #sp.eye(len(index))
+
+        for i in index:
+            objective += -(self.p_upper[action][state][i] * lu[i])
+            objective += (self.p_lower[action][state][i] * ll[i])
+
+        model.setObjective(objective, GRB.MAXIMIZE)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        # todo: debug -> AttributeError: b"Unable to retrieve attribute 'objVal'"
+        # the equation seems to be infeasible
+        return model.objVal
+
+
+class Likelihood(InnerMethod):
+    # Initialize Elipsoid
+    def __init__(self, beta, delta):
+        InnerMethod.__init__(self)
+        self.beta = beta
+        self.delta = delta
+        self.bMax = None
+
+    # attach problem
+    def attachProblem(self, problem):
+        InnerMethod.attachProblem(self, problem)
+        self.bMax = zeros(self.problem.A)
+        for a in range(self.problem.A):
+            for i in range(self.problem.S):
+                for j in range(self.problem.S):
+                    self.bMax[a] -= self.problem.P[a][i][j] * math.log(self.problem.P[a][i][j] + sys.float_info.epsilon)
+
+        if self.beta > max(self.bMax):
+            print("Beta will be cut of to " + str(max(self.bMax)))
+        self.beta = minimum(self.beta, max(self.bMax))
+
+    # see if a transition kernel p is in sample
+    # TODO: make sure this works
+    def inSample(self, p) -> bool:
+        for a in range(self.problem.A):
+            for s in range(self.problem.S):
+                # todo: debug, as it is comparing deep negative numbers with beta
+                if sum(self.problem.P[a][s] * log(p[a][s] + sys.float_info.epsilon)) > self.beta:
+                    return False
+        return True
+
+    # calculate update scalar for inner method
+    def run(self, state, action):
+        mu_lower = max(self.problem.V)
+        e_factor = math.pow(math.e, self.beta - self.bMax[action]) - sys.float_info.epsilon
+        mu_upper = (max(self.problem.V) - e_factor * average(self.problem.V)) / (1 - e_factor)
+        mu = (mu_upper + mu_lower) / 2
+        while (mu_upper - mu_lower) > self.delta * (1 + 2 * mu_lower):
+            mu = (mu_upper + mu_lower) / 2
+            if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
+                mu_upper = mu
+            else:
+                mu_lower = mu
+        lmbda = self.lambdaLikelyhoodModel(mu, state, action)
+        if abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
+            return mu
+        return mu - (1 + self.beta) * lmbda + lmbda * sum(
+            multiply(
+                self.problem.P[action][state],
+                log(sys.float_info.epsilon + divide(
+                    self.lambdaLikelyhoodModel(mu, state, action) * self.problem.P[action][state],
+                    subtract(repeat(mu, self.problem.S), self.problem.V)))))
+
+    # privately used methods
+    def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
+        dsigma = - self.beta + sum(
+            multiply(
+                self.problem.P[action][state],
+                log(
+                    sys.float_info.epsilon +
+                    divide(
+                        self.lambdaLikelyhoodModel(mu, state, action) * self.problem.P[action][state],
+                        subtract(repeat(mu, self.problem.S), self.problem.V) + sys.float_info.epsilon))))
+        dsigma *= sum(divide(self.problem.P[action][state], power(mu * ones(self.problem.S) - self.problem.V, 2)))
+        dsigma /= math.pow(sum(divide(self.problem.P[action][state], mu * ones(self.problem.S) - self.problem.V)), 2)
+        return dsigma
+
+    def lambdaLikelyhoodModel(self, mu, state, action):
+        return 1 / sum(
+            divide(self.problem.P[action][state], mu * ones(self.problem.S) - self.problem.V + sys.float_info.epsilon))
+
+
+class Wasserstein(InnerMethod):
+    # Initialize Wasserstein
+    def __init__(self, beta):
+        InnerMethod.__init__(self)
+        self.beta = beta
+
+    # see if a transition kernel p is in sample
+    def inSample(self, p) -> bool:
+        max_distance = 0;
+        for a in range(self.problem.A):
+            for s in range(self.problem.S):
+                max_distance = max(max_distance, wasserstein_distance(self.problem.P[a][s], p[a][s]))
+        return max_distance < self.beta
+
+    # calculate update scalar for inner method
+    def run(self, state, action):
+        model = Model('SigmaEMD')
+        pGurobi = model.addVars(self.problem.S, vtype=GRB.CONTINUOUS, name="p")
+        p = transpose(array(pGurobi.items()))[1]
+        emdGurobi = model.addVars(self.problem.S, vtype=GRB.CONTINUOUS, name="emd")
+        emd = transpose(array(emdGurobi.items()))[1]
+        emdAbsGurobi = model.addVars(self.problem.S, vtype=GRB.CONTINUOUS, name="emd_abs")
+        emdAbs = transpose(array(emdAbsGurobi.items()))[1]
+        objective = LinExpr()
+        objective += dot(p, self.problem.V)
+        model.setObjective(objective, GRB.MINIMIZE)
+        for i in range(self.problem.S):
+            if i == 0:
+                model.addConstr(emd[i] == p[i] - self.problem.P[action][state][i])
+            else:
+                model.addConstr(emd[i] == p[i] - self.problem.P[action][state][i] + emd[i - 1])
+            model.addConstr(emd[i] <= emdAbs[i])
+            model.addConstr(-emd[i] <= emdAbs[i])
+        model.addConstr((-sum(emdAbs)) <= self.beta)
+        model.addConstr(sum(emdAbs) <= self.beta)
+
+        # stay silent
+        model.setParam('OutputFlag', 0)
+
+        model.optimize()
+        return model.objVal
 
 
 if __name__ == "__main__":
@@ -156,9 +391,3 @@ if __name__ == "__main__":
     m.run()
     print(m.policy)
     print(m.V)
-
-    # example of how to use it:
-    # mdp_list = {
-    #     "wasserstein b=0.12": Robust(Wasserstein(0.12)),
-    # }
-
