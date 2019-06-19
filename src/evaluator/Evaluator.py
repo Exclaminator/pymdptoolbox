@@ -16,54 +16,64 @@ INNER_KEY = "inner"
 OUTER_KEY = "outer"
 FILTER_RATIO_KEY = "filter_ratio"
 
-def build_and_run(problem_dict, mdp_dict, options):
-    Evaluator(options).run(problem_dict, mdp_dict)
-
 
 class Evaluator(object):
-
     """
     create an evaluator, which can then be run.
     The arguments are dictionary objects.
     """
-    def __init__(self, options):
+    def __init__(self, problems, mdpconstructors, options):
+        # if there is a single problem make it a list
+        if not isinstance(problems, list):
+            self.problems = [problems]
+        else:
+            self.problems = problems
+
+        # if there is a single MDPConstructor make it a list
+        if not isinstance(mdpconstructors, list):
+            self.mdpconstructors = [mdpconstructors]
+        else:
+            self.mdpconstructors = mdpconstructors
+
         self.options = options
 
-        self.file_to_write = None
-        self.log_dir = None
-        # we have no results so far
-        self.results = None
-
-    """
-    Run the evaluator
-    """
-    def run(self, problem_dict, mdp_dict):
-
-        if self.options.log_dir is None:
-            timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-        else:
-            timestamp = self.options.log_dir
-
-        self.log_dir = "../../logs/" + timestamp + "/"
+        # find out where to log and make corosponding folders
+        self.log_dir = "../../logs/" + datetime.now().strftime('%Y%m%d-%H%M%S') + "/"
         log_filename = self.log_dir + "results.log"
         os.makedirs(self.log_dir)
 
         # create log file
         self.file_to_write = open(log_filename, "w+")
 
+        # we have no results so far
+        self.results = None
+
+    """
+    Run the destructor
+    closes the log file
+    """
+    def __del__(self):
+        self.file_to_write.close()
+
+    """
+    Run the evaluator
+    """
+    def run(self):
         results = {}
 
-        for problem_key, problem in problem_dict.items():
-            print(problem_key)
+        for problem_key, problem in enumerate(self.problems):
+            # print("Running problem: " + str(problem.get_name()))
+            ps = ProblemSet(problem, self.options)
+
             all_samples = ProblemSet.create_large_problem_list(problem, self.options.sample_var,
                                                                self.options.sample_amount)
-            for mdp_key, mdp in mdp_dict.items():
-                print(mdp_key)
-                mdp_init = mdp(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
-                ps = ProblemSet.ProblemSet(all_samples, mdp_init)
-                mdp_init.run()
-                results[problem_key, mdp_key], filter_ratio = self.evaluate(ps, mdp_init.policy)
-                self.log_results(problem_key, mdp_key, mdp_init.policy, results[problem_key, mdp_key], filter_ratio)
+            for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
+                print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
+                ps = ProblemSet.ProblemSet(all_samples, mdp)
+                mdp.run()
+                results[problem_key, mdp_key], filter_ratio = self.evaluate(ps, mdp.policy)
+                self.log_results(problem_key, mdp_key, mdp.policy, results[problem_key, mdp_key], filter_ratio)
 
         self.plot_results(results)
         self.file_to_write.close()
