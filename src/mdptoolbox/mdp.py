@@ -355,6 +355,10 @@ class MDP(object):
         """Set the MDP algorithm to verbose mode."""
         self.verbose = True
 
+    def getName(self):
+        """"Get the name of the MDP"""
+        return type(self).__name__
+
 
 class FiniteHorizon(MDP):
 
