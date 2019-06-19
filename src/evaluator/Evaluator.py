@@ -14,7 +14,7 @@ COMPUTED_KEY = "computed"
 ALL_KEY = "all"
 INNER_KEY = "inner"
 OUTER_KEY = "outer"
-
+FILTER_RATIO_KEY = "filter_ratio"
 
 def build_and_run(problem_dict, mdp_dict, options):
     Evaluator(options).run(problem_dict, mdp_dict)
@@ -62,8 +62,8 @@ class Evaluator(object):
                 mdp_init = mdp(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
                 ps = ProblemSet.ProblemSet(all_samples, mdp_init)
                 mdp_init.run()
-                results[problem_key, mdp_key] = self.evaluate(ps, mdp_init.policy)
-                self.log_results(problem_key, mdp_key, mdp_init.policy, results[problem_key, mdp_key])
+                results[problem_key, mdp_key], filter_ratio = self.evaluate(ps, mdp_init.policy)
+                self.log_results(problem_key, mdp_key, mdp_init.policy, results[problem_key, mdp_key], filter_ratio)
 
         self.plot_results(results)
         self.file_to_write.close()
@@ -76,12 +76,19 @@ class Evaluator(object):
         # store results
         result = {}
 
+        filter_ratio = 0
+
         if self.options.evaluate_all:
             result[ALL_KEY, COMPUTED_KEY], result[ALL_KEY, SIMULATED_KEY] = \
                 self.evaluate_policy_on_problem_list(policy, all_samples)
 
         if self.options.evaluate_inner:
             inner_samples = problem_set.filter(all_samples)
+
+            # store the ratio of filtered samples in results
+            # result[INNER_KEY, FILTER_RATIO_KEY]\
+            filter_ratio = len(inner_samples)/len(all_samples)
+
             result[INNER_KEY, COMPUTED_KEY], result[INNER_KEY, SIMULATED_KEY] = \
                 self.evaluate_policy_on_problem_list(policy, inner_samples)
 
@@ -92,7 +99,7 @@ class Evaluator(object):
         #     result[OUTER_KEY, COMPUTED_KEY], result[OUTER_KEY, SIMULATED_KEY] = \
         #         self.evaluate_policy_on_problem_list(policy, outer_samples)
 
-        return result
+        return result, filter_ratio
 
     def evaluate_policy_on_problem_list(self, policy, problem_list):
         # limit on the number of paths
@@ -151,7 +158,7 @@ class Evaluator(object):
         tk = problem.transition_kernel
 
         results = []
-        for i in range(self.options.number_of_runs):
+        for i in range(self.options.number_of_sims):
             s_current = 0
             total_reward = 0
 
@@ -168,14 +175,16 @@ class Evaluator(object):
 
         return _np.mean(results)
 
-    def log_results(self, problem_key, mdp_key, policy, results):
+    def log_results(self, problem_key, mdp_key, policy, results, filter_ratio):
         # define logging behavior here
         # maybe add "verbose" or "minimal" etc.
         if self.options.logging_behavior is None:
             to_write = {
                 "mdp": mdp_key,
                 "problem": problem_key,
-                "policy": policy,
+                "policy": str(policy),
+                "filter_ratio": filter_ratio
+
             }
             for (set_key, eval_key), values in results.items():
                 if len(values) == 0:
