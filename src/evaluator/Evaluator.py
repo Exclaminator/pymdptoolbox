@@ -56,6 +56,7 @@ class Evaluator(object):
         self.filter_ratio = {}
         self.logList = {}
         self.figures = {}
+        self.time = {}
 
     """
     Run the destructor
@@ -75,6 +76,7 @@ class Evaluator(object):
         to_write = {
             "problem": self.problems[problem].getName(),
             "mdp": mdp.getName(),
+            "time": self.time[problem, mdp_key],
             "policy": str(mdp.policy)}
 
         for sampling in Sampling:
@@ -118,6 +120,9 @@ class Evaluator(object):
 
                 # run mdp
                 mdp.run()
+
+                # log time that it took
+                self.time[problem_key, mdp_key] = mdp.time
 
                 # see if we need to evaluate on all results
                 if self.options.evaluate_all:
