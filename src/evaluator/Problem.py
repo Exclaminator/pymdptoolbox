@@ -144,10 +144,10 @@ class ProblemSet(object):
         # limit on the number of paths
         if len(self.samples) >= self.options.number_of_paths:
             self.samples = self.samples[0:self.options.number_of_paths]
-        else:
-            warnings.warn(
-                "number_of_paths ({}) is larger than the number of filtered policies ({})"
-                    .format(self.options.number_of_paths, len(self.samples)))
+        # else:
+            # warnings.warn(
+            #     "number_of_paths ({}) is larger than the number of filtered policies ({})"
+            #         .format(self.options.number_of_paths, len(self.samples)))
 
     def split(self, mdp):
         # all_problems is a list instead of a ProblemSet object
