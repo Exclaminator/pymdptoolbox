@@ -67,7 +67,6 @@ class Evaluator(object):
     def log(self, problem, mdp, mdp_key, sampling, evaluationMethod, results, filter_ratio=None):
         self.results[problem, mdp_key, sampling, evaluationMethod] = results
         self.filter_ratio[problem, mdp_key, sampling, evaluationMethod] = filter_ratio
-        self.plot(problem, mdp, sampling, evaluationMethod, results)
 
     def write_log(self, problem, mdp_key, mdp):
         to_write = {
@@ -151,21 +150,35 @@ class Evaluator(object):
                 # write log
                 self.write_log(problem_key, mdp_key, mdp)
 
-    def plot(self, problem, mdp, sampling, evaluationMethod, results):
-        title = self.problems[problem].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
-        if (problem, sampling, evaluationMethod) in self.figures:
-            figure = pyplot.figure(self.figures[problem, sampling, evaluationMethod].number)
-        else:
-            figure = pyplot.figure()
-            self.figures[problem, sampling, evaluationMethod] = figure
-            pyplot.title(title)
-            pyplot.xlabel("Value")
-            pyplot.ylabel("Frequency")
-            pyplot.legend()
+            self.plot(problem_key)
 
-        sns.distplot({mdp.getName(): results}[mdp.getName()], hist=self.options.plot_hist, label=mdp.getName())
-        pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
-        pyplot.show()
+    def plot(self, problem_key):
+        for sampling in Sampling:
+            for evaluationMethod in EvaluationMethod:
+                found = False
+                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
+                        found = True
+                if not found: continue
+
+                self.figures[problem_key, sampling, evaluationMethod] = pyplot.figure()
+                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+
+                pyplot.title(title)
+                pyplot.xlabel("Value")
+                pyplot.ylabel("Frequency")
+                pyplot.legend()
+
+                results = {}
+                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
+                        results[str(mdp_constructor)] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                        sns.distplot(results[str(mdp_constructor)], hist=self.options.plot_hist, label=str(mdp_constructor))
+
+                pyplot.legend()
+                pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
+                               dpi=150, format="png")
+                pyplot.show()
 
     #
     #
