@@ -33,18 +33,19 @@ def run_default():
         do_simulation=False,
         evaluate_all=True,
         evaluate_inner=True,
-        sample_var=0.15,
+        sample_var=0.1,
         sample_amount=1000,
     )
     problem_dict = {
-        "forest": forestProblem
+        #"forest": forestProblem,
+        "random_problem": Problem.create_random_problem()
     }
     mdp_dict = {
-        "wasserstein-0.055": Robust(Wasserstein(0.1)),
-        "ellipsoid-0.1": Robust(Ellipsoid(0.2)),
+        "wasserstein-0.055": Robust(Wasserstein(0.3)),
+        "ellipsoid-0.3": Robust(Ellipsoid(5)),
         "value_iteration": ValueIteration,
-        "max_likelihood-0.2-0.2": Robust(Likelihood(0.2, 0.1)),
-        "interval": Robust(Interval(tk_low, tk_up))
+        #"max_likelihood-0.2-0.2": Robust(Likelihood(0.01, 0.2)),
+        #"interval": Robust(Interval(tk_low, tk_up))
     }
     Evaluator.build_and_run(problem_dict, mdp_dict, options)
 

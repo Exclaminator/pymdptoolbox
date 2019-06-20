@@ -12,18 +12,21 @@ class Ellipsoid(InnerMethod):
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
         distances = []
-        for a in range(self.problem.A):
-            for s in range(self.problem.S):
+        for action in range(self.problem.A):
+            for state in range(self.problem.S):
+                # consider euclidean distance away
                 # I replaced self.problem.P[a][s] with len(self.problem.P[a][s]), which I think makes more sense
-                f_minus_p = subtract(p[a][s], self.problem.P[a][s])
+                out_of_bounds = divide(sum(power(
+                            subtract(p, self.problem.P[action][state]),
+                            2)
+                    ),  len(self.problem.P[action][state])
+                ) >= self.beta
+                if out_of_bounds:
+                    return False
 
-                # distances.append(sum(divide(power(
-                #             f_minus_p, 2),
-                #         self.problem.P[a][s] + sys.float_info.epsilon)))
-                distances.append(sum(power(
-                    f_minus_p, 2)))
-        #k2 = 2*(self.beta - self.betaMax)
-        return max(distances) < self.beta
+                    # k2 = 2*(self.beta - self.betaMax) is the real constraint for the ellipsoid model
+
+        return True
 
     # calculate update scalar for inner method
     def run(self, state, action):
@@ -33,13 +36,21 @@ class Ellipsoid(InnerMethod):
         objective = LinExpr()
         objective += dot(p, self.problem.V)
         model.setObjective(objective, GRB.MINIMIZE)
-        model.addConstr(sum(
-            divide(
+        # maybe this constraint is wrong?
+        model.addConstr(divide(sum(
                 multiply(
                     subtract(p, self.problem.P[action][state]),
-                    subtract(p, self.problem.P[action][state])),
-                self.problem.P[action][state] + sys.float_info.epsilon
-            )) <= self.beta)
+                    subtract(p, self.problem.P[action][state]))
+            ),  len(self.problem.P[action][state])
+        ) <= self.beta)
+
+        # model.addConstr(sum(
+        #     divide(
+        #         multiply(
+        #             subtract(p, self.problem.P[action][state]),
+        #             subtract(p, self.problem.P[action][state])),
+        #         self.problem.P[action][state] + sys.float_info.epsilon
+        #     )) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)

@@ -27,12 +27,18 @@ class Likelihood(InnerMethod):
     # see if a transition kernel p is in sample
     # TODO: make sure this works
     def inSample(self, p) -> bool:
+        distances = []
         for a in range(self.problem.A):
             for s in range(self.problem.S):
                 # todo: debug, as it is comparing deep negative numbers with beta
-                if sum(self.problem.P[a][s]*log(p[a][s]+sys.float_info.epsilon)) > self.beta:
-                    return False
-        return True
+                #dist = sum(self.problem.P[a][s]*log(p[a][s]+sys.float_info.epsilon))
+                #dist = log(p[s][a]) @ self.problem.P[s][a]
+                dist = log(divide(p[s][a], self.problem.P[s][a]))
+                distances.append(sum(dist))
+        max_dist = max(distances)
+        sum_dist = sum(distances)
+        mean_dist = mean(distances)
+        return max_dist > self.beta
 
     # calculate update scalar for inner method
     def run(self, state, action):
