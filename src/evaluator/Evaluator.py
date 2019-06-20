@@ -54,21 +54,22 @@ class Evaluator(object):
         self.results = {}
         self.filter_ratio = {}
         self.logList = {}
+        self.figures = {}
 
     """
     Run the destructor
-    closes the log file
+    closes the log file and pyplot
     """
     def __del__(self):
         self.file_to_write.close()
+        pyplot.close()
 
-    def log(self, problem, mdp_key, sampling, evaluationMethod, results, filter_ratio=None):
+    def log(self, problem, mdp, mdp_key, sampling, evaluationMethod, results, filter_ratio=None):
         self.results[problem, mdp_key, sampling, evaluationMethod] = results
         self.filter_ratio[problem, mdp_key, sampling, evaluationMethod] = filter_ratio
+        self.plot(problem, mdp, sampling, evaluationMethod, results)
 
     def write_log(self, problem, mdp_key, mdp):
-        # define logging behavior here
-        # maybe add "verbose" or "minimal" etc.
         to_write = {
             "problem": self.problems[problem].getName(),
             "mdp": mdp.getName(),
@@ -119,9 +120,9 @@ class Evaluator(object):
                 # see if we need to evaluate on all results
                 if self.options.evaluate_all:
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED, ps.computeMDP(mdp))
+                        self.log(problem_key, mdp, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED, ps.computeMDP(mdp))
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED, ps.simulateMDP(mdp))
+                        self.log(problem_key, mdp, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED, ps.simulateMDP(mdp))
 
                 # see if we need inner or outer samples
                 if self.options.evaluate_inner or self.options.evaluate_outer:
@@ -131,58 +132,83 @@ class Evaluator(object):
                 if self.options.evaluate_inner:
                     filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
+                        self.log(problem_key, mdp, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
                                  self.inner_samples.computeMDP(mdp), filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
+                        self.log(problem_key, mdp, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
                                  self.inner_samples.simulateMDP(mdp), filter_ratio)
 
                 # see if we need to evaluate on outer results
                 if self.options.evaluate_outer:
                     filter_ratio = len(self.outer_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
+                        self.log(problem_key, mdp, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
                                  self.outer_samples.computeMDP(mdp), filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
+                        self.log(problem_key, mdp, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
                                  self.outer_samples.simulateMDP(mdp), filter_ratio)
 
                 # write log
                 self.write_log(problem_key, mdp_key, mdp)
-        self.plot_results()
 
-
-    def plot_results(self):
-
-        figures = {}
-        # legend = []
-
-        for (problem_key, mdp_key), mp_result in results.items():
-             for (set_key, evaluation_key), values in mp_result.items():
-                if len(values) == 0:
-                    continue
-                # add figure to dict if not added
-                if (problem_key, set_key, evaluation_key) not in figures.keys():
-                    # initialize figure
-                    figure = pyplot.figure()
-                    figures[problem_key, set_key, evaluation_key] = figure
-                else:
-                    # set figure index
-                    pyplot.figure(figures[problem_key, set_key, evaluation_key].number)
-
-                # plot to the figure which is initialized in the if statement above
-                sns.distplot(values, hist=self.options.plot_hist, label=mdp_key)
-
-        for (problem_key, set_key, evaluation_key), figure in figures.items():
-            # plot and show figure
-            pyplot.figure(figure.number)
-            title = problem_key + "-" + set_key + "-" + evaluation_key
+    def plot(self, problem, mdp, sampling, evaluationMethod, results):
+        title = self.problems[problem].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+        if (problem, sampling, evaluationMethod) in self.figures:
+            figure = pyplot.figure(self.figures[problem, sampling, evaluationMethod].number)
+        else:
+            figure = pyplot.figure()
+            self.figures[problem, sampling, evaluationMethod] = figure
             pyplot.title(title)
             pyplot.xlabel("Value")
             pyplot.ylabel("Frequency")
             pyplot.legend()
-            pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
 
+        sns.distplot({mdp.getName(): results}[mdp.getName()], hist=self.options.plot_hist, label=mdp.getName())
+        pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
         pyplot.show()
-        pyplot.close()
 
+    #
+    #
+    # def plot_results(self):
+    #
+    #     figures = {}
+    #     # legend = []
+    #
+    #     # create all nesseceary plots
+    #     for problem_key, problem in enumerate(self.problems):
+    #         for sampling in Sampling:
+    #             for evaluationMethod in EvaluationMethod:
+    #                 found = False
+    #                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+    #                     if (problem, mdp_key, sampling, evaluationMethod) in self.results:
+    #                         found = True
+    #                 if found:
+    #                     figures[problem_key, sampling, evaluationMethod] = pyplot.figure()
+    #
+    #     for (problem_key, mdp_key), mp_result in results.items():
+    #          for (set_key, evaluation_key), values in mp_result.items():
+    #             if len(values) == 0:
+    #                 continue
+    #             # add figure to dict if not added
+    #             if (problem_key, set_key, evaluation_key) not in figures.keys():
+    #                 # initialize figure
+    #                 figure = pyplot.figure()
+    #                 figures[problem_key, set_key, evaluation_key] = figure
+    #             else:
+    #                 # set figure index
+    #                 pyplot.figure(figures[problem_key, set_key, evaluation_key].number)
+    #
+    #             # plot to the figure which is initialized in the if statement above
+    #             sns.distplot(values, hist=self.options.plot_hist, label=mdp_key)
+    #
+    #     for (problem_key, set_key, evaluation_key), figure in figures.items():
+    #         # plot and show figure
+    #         pyplot.figure(figure.number)
+    #         title = problem_key + "-" + set_key + "-" + evaluation_key
+    #         pyplot.title(title)
+    #         pyplot.xlabel("Value")
+    #         pyplot.ylabel("Frequency")
+    #         pyplot.legend()
+    #         pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
+    #
+    #     pyplot.show()
