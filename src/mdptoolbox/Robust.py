@@ -367,16 +367,24 @@ class RobustModel(ValueIteration):
 
     # non linear model, cannot be solved by Gurobi
     def computeSigmaMaximumLikelihoodModel(self, state, action):
+        # todo combine beta with beta_max
         mu_upper = _np.min(self.V)
         e_factor = math.pow(math.e,  self.beta) - sys.float_info.epsilon
-        mu_lower = (_np.max(self.V) - e_factor*_np.average(self.V)) / (1 - e_factor)
+        v_avg = _np.dot(self.V, self.P[action][state])
+        mu_lower = (_np.min(self.V) - e_factor*v_avg) / (1 - e_factor) #TODO bug
         mu = (mu_upper + mu_lower)/2
-        while (mu_upper - mu_lower) > self.delta*(1+2*mu_lower):
+        if (mu_upper < mu_lower and mu_lower - mu_upper) > 0.001:
+            print("BUG")
+
+        print("{} - {}".format(mu_lower, mu_upper))
+        while (mu_upper - mu_lower) > 0.001: #TODO
+            diff = mu_upper - mu_lower
             mu = (mu_upper + mu_lower)/2
-            if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
+            if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0: #TODO
                 mu_upper = mu
             else:
                 mu_lower = mu
+        print(mu)
         lmbda = self.lambdaLikelyhoodModel(mu, state, action)
         if _np.abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
             return mu
@@ -396,9 +404,11 @@ class RobustModel(ValueIteration):
                     _np.divide(
                         self.lambdaLikelyhoodModel(mu, state, action)*self.P[action][state],
                         _np.subtract(self.V, _np.repeat(mu, self.S))+ sys.float_info.epsilon))))
-        dsigma *= _np.sum(_np.divide(self.P[action][state], _np.power( self.V - mu * _np.ones(self.S), 2)))
+        dsigma *= (-_np.sum(_np.divide(self.P[action][state], _np.power( self.V - mu * _np.ones(self.S), 2))))
         dsigma /= math.pow(_np.sum(_np.divide(self.P[action][state],  self.V - mu * _np.ones(self.S))), 2)
         return dsigma
 
     def lambdaLikelyhoodModel(self, mu, state, action):
+        #TOdO bigger epsilon?
         return 1 / _np.sum(_np.divide(self.P[action][state], self.V - mu*_np.ones(self.S) + sys.float_info.epsilon))
+

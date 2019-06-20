@@ -40,68 +40,13 @@ def run_multi(mdp_pair_list, number_of_runs, options, problems_dict, test_argume
 
     results_all = {}
 
-    # run on all problems
-    for problem in problem_list:
-        problem_type = problem["type"]
-        file_to_write.write(str(problem_type) + "\n")
-        results_for_problem = {}
-        print(problem['type'])
-        p_set = []
-        for i in range(number_of_runs):
-            p_set.append(distortP(problem["P"], problem["P_var"], options))
-        for mdp_dict in mdp_pair_list:
-            mdp_type = mdp_dict["type"]
-            # create an identifier for the legend and naming
-            #mdp_id = mdp_type + json.dumps(mdp_dict["parameters"])
-            mdp_id = mdp_type
-            if "sigma_identifier" in  mdp_dict["parameters"]:
-                mdp_id += " " + mdp_dict["parameters"]["sigma_identifier"]
-            print(mdp_type)
-            print(mdp_dict["parameters"])
-            # instantiate mdp
-            mdp = create_mdp_from_dict(mdp_dict, problem, options)
-            # simulate some number of time
-
-            results_mdp_dict = compute_values_X_times(p_set, mdp.policy, problem, options)
-            vp = compute_value_for_policy_on_problem(
-                mdp.policy, problem, options
-            )
-
-            # do evaluation on results for this mdp and log it
-            file_to_write.write(mdp_id+":\n")
-            file_to_write.write("policy: "+str(mdp.policy)+"\n")
-            file_to_write.write(str(evaluate_mdp_results(results_mdp_dict, options))+"\n")
-            file_to_write.write("Value for original p: {} )\n".format(vp))
-            # results_for_problem[mdp_id, "simulated_results"] = results_mdp_dict["simulated_results"]
-            results_for_problem[mdp_id, "computed_results"] = results_mdp_dict["computed_results"]
-
-        # for each problem, create figures
-        if ~plot_disabled:
-            # retrieving the corresponding keys for the plots
-            keys_tuples = list(results_for_problem.keys())
-
-            keys_simulated = list(filter(lambda x: x[1] == "simulated_results", keys_tuples))
-            keys_computed = list(filter(lambda x: x[1] == "computed_results", keys_tuples))
-
-            if options["run_simulations"]:
-                make_figure_plot(
-                    results_for_problem, keys_simulated, problem_type + " simulated",
-                    folder_out + problem_type + "simulated.png", options
-                )
-            make_figure_plot(
-                results_for_problem, keys_computed, problem_type + " computed",
-                folder_out + problem_type + "computed.png", options
-            )
-
-        file_to_write.write("\n")
-        results_all[problem_type] = results_for_problem
 
     results_all = {}
 
     # default values
     betaList = [0.1]
     deltaList = [0.1]
-    varianceList = [problem["P_var"]]
+    varianceList = [0.2]
 
 
     if "beta" in test_arguments:
