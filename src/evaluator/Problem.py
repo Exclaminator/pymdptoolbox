@@ -142,7 +142,7 @@ class ProblemSet(object):
         self.resultsSimulated = []
 
         # limit on the number of paths
-        if len(self.samples) > self.options.number_of_paths:
+        if len(self.samples) >= self.options.number_of_paths:
             self.samples = self.samples[0:self.options.number_of_paths]
         else:
             warnings.warn(

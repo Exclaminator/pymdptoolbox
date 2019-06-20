@@ -8,14 +8,14 @@ from enum import Enum
 
 
 class Sampling(Enum):
-    ALL = 1
-    IN_SAMPLING = 2
-    OUT_SAMPLING = 3
+    ALL = "ALL"
+    IN_SAMPLING = "IN_SAMPLING"
+    OUT_SAMPLING = "OUT_SAMPLING"
 
 
 class EvaluationMethod(Enum):
-    COMPUTED = 1
-    SIMULATED = 2
+    COMPUTED = "COMPUTED"
+    SIMULATED = "SIMULATED"
 
 
 class Evaluator(object):
@@ -51,6 +51,9 @@ class Evaluator(object):
         self.results = None
         self.inner_samples = None
         self.outer_samples = None
+        self.results = {}
+        self.filter_ratio = {}
+        self.logList = {}
 
     """
     Run the destructor
