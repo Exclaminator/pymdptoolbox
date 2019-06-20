@@ -52,6 +52,7 @@ class Evaluator(object):
         self.inner_samples = None
         self.outer_samples = None
         self.results = {}
+        self.distances = {}
         self.filter_ratio = {}
         self.logList = {}
         self.figures = {}
@@ -64,8 +65,10 @@ class Evaluator(object):
         self.file_to_write.close()
         pyplot.close()
 
-    def log(self, problem, mdp, mdp_key, sampling, evaluationMethod, results, filter_ratio=None):
+    def log(self, problem, mdp_key, sampling, evaluationMethod, results, distances, filter_ratio=None):
         self.results[problem, mdp_key, sampling, evaluationMethod] = results
+        self.distances[problem, mdp_key, sampling, evaluationMethod] = distances
+        print("logging " + str(len(results)) + " results and " + str(len(distances)) + " distances")
         self.filter_ratio[problem, mdp_key, sampling, evaluationMethod] = filter_ratio
 
     def write_log(self, problem, mdp_key, mdp):
@@ -119,9 +122,11 @@ class Evaluator(object):
                 # see if we need to evaluate on all results
                 if self.options.evaluate_all:
                     if self.options.do_computation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED, ps.computeMDP(mdp))
+                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED,
+                                 ps.computeMDP(mdp), ps.distances)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED, ps.simulateMDP(mdp))
+                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED,
+                                 ps.simulateMDP(mdp), ps.distances)
 
                 # see if we need inner or outer samples
                 if self.options.evaluate_inner or self.options.evaluate_outer:
@@ -131,21 +136,21 @@ class Evaluator(object):
                 if self.options.evaluate_inner:
                     filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
-                                 self.inner_samples.computeMDP(mdp), filter_ratio)
+                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
+                                 self.inner_samples.computeMDP(mdp), self.inner_samples.distances, filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
-                                 self.inner_samples.simulateMDP(mdp), filter_ratio)
+                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
+                                 self.inner_samples.simulateMDP(mdp), self.inner_samples.distances, filter_ratio)
 
                 # see if we need to evaluate on outer results
                 if self.options.evaluate_outer:
                     filter_ratio = len(self.outer_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
-                                 self.outer_samples.computeMDP(mdp), filter_ratio)
+                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
+                                 self.outer_samples.computeMDP(mdp), self.outer_samples.distances, filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
-                                 self.outer_samples.simulateMDP(mdp), filter_ratio)
+                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
+                                 self.outer_samples.simulateMDP(mdp), self.outer_samples.distances, filter_ratio)
 
                 # write log
                 self.write_log(problem_key, mdp_key, mdp)
@@ -175,8 +180,35 @@ class Evaluator(object):
                         name = mdp_constructor(self.problems[problem_key].transition_kernel,
                                                self.problems[problem_key].reward_matrix,
                                                self.problems[problem_key].discount_factor).getName()
+                        # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
                         sns.distplot(results[name], hist=self.options.plot_hist, label=name)
+
+                pyplot.legend()
+                pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
+                               dpi=150, format="png")
+                pyplot.show()
+
+                self.figures[problem_key, sampling, evaluationMethod, "scatter"] = pyplot.figure()
+                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+
+                pyplot.title(title)
+                pyplot.xlabel("Transition kernel distance")
+                pyplot.ylabel("Value")
+                pyplot.legend()
+
+                results = {}
+                distances = {}
+                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
+                            (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
+                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                               self.problems[problem_key].reward_matrix,
+                                               self.problems[problem_key].discount_factor).getName()
+                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                        distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
+                        l = min(len(results[name]), len(distances[name]))
+                        sns.scatterplot(x=distances[name][1:l], y=results[name][1:l], s=10, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],

@@ -1,6 +1,7 @@
 import numpy as _np
+from scipy.stats import wasserstein_distance
+
 import mdptoolbox.example
-import warnings
 import scipy as sp
 from evaluator.Evaluator import Sampling
 
@@ -22,15 +23,16 @@ class Problem(object):
     - distance based (d(p,P) <= beta)
     """
 
-    def __init__(self, transition_kernel, reward_matrix, discount_factor=0.9, name="undefined"):
+    def __init__(self, transition_kernel, reward_matrix, discount_factor=0.9, name="undefined", distance=0):
         self.transition_kernel = transition_kernel
         self.reward_matrix = reward_matrix
         self.discount_factor = discount_factor
         self.name = name
+        self.distance = distance
 
     def getName(self):
         return self.name
-        
+
     def getProblemSet(self, options):
         variance = options.sample_var
         sample_amount = options.sample_amount
@@ -43,11 +45,15 @@ class Problem(object):
         problems_out = []
         for i in range(sample_amount):
             tk = self.normalize_tk(non_normalized_tks[:, :, :, i])
-            new_problem = Problem(tk, self.reward_matrix, self.discount_factor)
+            distance = 0
+            for a in range(self.transition_kernel.shape[0]):
+                for s in range(self.transition_kernel.shape[1]):
+                    distance += wasserstein_distance(tk[a][s], self.transition_kernel[a][s])
+            new_problem = Problem(tk, self.reward_matrix, self.discount_factor, self.name, distance)
             # new_problem.transition_kernel = tk
             problems_out.append(new_problem)
 
-        return ProblemSet(problems_out, self, options)
+        return ProblemSet(problems_out, self, options, Sampling.ALL)
 
     def computeMDP(self, mdp):
         policy = mdp.policy
@@ -140,14 +146,11 @@ class ProblemSet(object):
         self.sampling = sampling
         self.resultsComputed = []
         self.resultsSimulated = []
+        self.distances = []
 
-        # limit on the number of paths
-        if len(self.samples) >= self.options.number_of_paths:
-            self.samples = self.samples[0:self.options.number_of_paths]
-        # else:
-            # warnings.warn(
-            #     "number_of_paths ({}) is larger than the number of filtered policies ({})"
-            #         .format(self.options.number_of_paths, len(self.samples)))
+        # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
+        for problem in self.samples:
+            self.distances.append(problem.distance)
 
     def split(self, mdp):
         # all_problems is a list instead of a ProblemSet object
@@ -169,12 +172,14 @@ class ProblemSet(object):
             return self, self
 
     def computeMDP(self, mdp):
+        # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
         for problem in self.samples:
             self.resultsComputed.append(problem.computeMDP(mdp))
         return self.resultsComputed
 
     #  if self.options.do_simulation:
     def simulateMDP(self, mdp):
+        # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
         for problem in self.samples:
             self.resultsSimulated.append(problem.simulateMDP(mdp, self.options))
         return self.resultsSimulated
