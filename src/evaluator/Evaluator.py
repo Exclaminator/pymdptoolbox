@@ -8,14 +8,14 @@ from enum import Enum
 
 
 class Sampling(Enum):
-    ALL = "ALL"
-    IN_SAMPLING = "IN_SAMPLING"
-    OUT_SAMPLING = "OUT_SAMPLING"
+    ALL = 0
+    IN = 1
+    OUT = 2
 
 
-class EvaluationMethod(Enum):
-    COMPUTED = "COMPUTED"
-    SIMULATED = "SIMULATED"
+class EM(Enum):
+    COMPUTED = 0
+    SIMULATED = 1
 
 
 class Evaluator(object):
@@ -78,7 +78,7 @@ class Evaluator(object):
             "policy": str(mdp.policy)}
 
         for sampling in Sampling:
-            for evaluationMethod in EvaluationMethod:
+            for evaluationMethod in EM:
                 if (problem, mdp_key, sampling, evaluationMethod) in self.results:
                     values = self.results[problem, mdp_key, sampling, evaluationMethod]
                     if len(values) == 0:
@@ -122,10 +122,10 @@ class Evaluator(object):
                 # see if we need to evaluate on all results
                 if self.options.evaluate_all:
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED,
+                        self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
                                  ps.computeMDP(mdp), ps.distances)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED,
+                        self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
                                  ps.simulateMDP(mdp), ps.distances)
 
                 # see if we need inner or outer samples
@@ -136,20 +136,20 @@ class Evaluator(object):
                 if self.options.evaluate_inner:
                     filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
+                        self.log(problem_key, mdp_key, Sampling.IN, EM.COMPUTED,
                                  self.inner_samples.computeMDP(mdp), self.inner_samples.distances, filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
+                        self.log(problem_key, mdp_key, Sampling.IN, EM.SIMULATED,
                                  self.inner_samples.simulateMDP(mdp), self.inner_samples.distances, filter_ratio)
 
                 # see if we need to evaluate on outer results
                 if self.options.evaluate_outer:
                     filter_ratio = len(self.outer_samples.samples) / len(ps.samples)
                     if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
+                        self.log(problem_key, mdp_key, Sampling.OUT, EM.COMPUTED,
                                  self.outer_samples.computeMDP(mdp), self.outer_samples.distances, filter_ratio)
                     if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
+                        self.log(problem_key, mdp_key, Sampling.OUT, EM.SIMULATED,
                                  self.outer_samples.simulateMDP(mdp), self.outer_samples.distances, filter_ratio)
 
                 # write log
@@ -159,7 +159,7 @@ class Evaluator(object):
 
     def plot(self, problem_key):
         for sampling in Sampling:
-            for evaluationMethod in EvaluationMethod:
+            for evaluationMethod in EM:
                 found = False
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
                     if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
@@ -211,7 +211,7 @@ class Evaluator(object):
                         sns.scatterplot(x=distances[name][1:l], y=results[name][1:l], s=10, label=name)
 
                 pyplot.legend()
-                pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
+                pyplot.savefig(self.log_dir + title + "scatter.png", num=self.figures[problem_key, sampling, evaluationMethod],
                                dpi=150, format="png")
                 pyplot.show()
 

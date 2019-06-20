@@ -159,12 +159,12 @@ class ProblemSet(object):
                 [x for x in self.samples if mdp.innerfunction.inSample(x.transition_kernel)],
                 self.problem,
                 self.options,
-                Sampling.IN_SAMPLING)
+                Sampling.IN)
             out_samples = ProblemSet(
                 [x for x in self.samples if not mdp.innerfunction.inSample(x.transition_kernel)],
                 self.problem,
                 self.options,
-                Sampling.OUT_SAMPLING)
+                Sampling.OUT)
             return in_samples, out_samples
 
         else:
