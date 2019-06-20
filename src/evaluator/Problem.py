@@ -152,19 +152,21 @@ class ProblemSet(object):
     def split(self, mdp):
         # all_problems is a list instead of a ProblemSet object
         if hasattr(mdp, "innerfunction"):
-            return ProblemSet(
+            in_samples = ProblemSet(
                 [x for x in self.samples if mdp.innerfunction.inSample(x.transition_kernel)],
                 self.problem,
                 self.options,
-                Sampling.IN_SAMPLING), ProblemSet(
+                Sampling.IN_SAMPLING)
+            out_samples = ProblemSet(
                 [x for x in self.samples if not mdp.innerfunction.inSample(x.transition_kernel)],
                 self.problem,
                 self.options,
-                Sampling.IN_SAMPLING)
+                Sampling.OUT_SAMPLING)
+            return in_samples, out_samples
 
         else:
             # non robust model
-            return self
+            return self, self
 
     def computeMDP(self, mdp):
         for problem in self.samples:
