@@ -26,7 +26,7 @@ def run_default():
             Robust(Wasserstein(0.1)),
             Robust(Ellipsoid(0.12)),
             ValueIteration,
-            Robust(Likelihood(0.2, 0.1)),
+            Robust(Likelihood(-0.4, 0.01)),
             Robust(Interval(tk_low, tk_up))
         ],
         Options(
