@@ -172,7 +172,6 @@ class Evaluator(object):
                 pyplot.title(title)
                 pyplot.xlabel("Value")
                 pyplot.ylabel("Frequency")
-                pyplot.legend()
 
                 results = {}
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
@@ -182,7 +181,8 @@ class Evaluator(object):
                                                self.problems[problem_key].discount_factor).getName()
                         # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        sns.distplot(results[name], hist=self.options.plot_hist, label=name)
+                        if len(results[name]) > 0:
+                            sns.distplot(results[name], hist=self.options.plot_hist, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
@@ -195,7 +195,7 @@ class Evaluator(object):
                 pyplot.title(title)
                 pyplot.xlabel("Transition kernel distance")
                 pyplot.ylabel("Value")
-                pyplot.legend()
+
 
                 results = {}
                 distances = {}
