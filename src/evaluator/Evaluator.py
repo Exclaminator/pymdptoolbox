@@ -62,13 +62,44 @@ class Evaluator(object):
     def __del__(self):
         self.file_to_write.close()
 
+    def log(self, problem, mdp_key, sampling, evaluationMethod, results, filter_ratio=None):
+        self.results[problem, mdp_key, sampling, evaluationMethod] = results
+        self.filter_ratio[problem, mdp_key, sampling, evaluationMethod] = filter_ratio
+
+    def write_log(self, problem, mdp_key, mdp):
+        # define logging behavior here
+        # maybe add "verbose" or "minimal" etc.
+        to_write = {
+            "problem": self.problems[problem].getName(),
+            "mdp": mdp.getName(),
+            "policy": str(mdp.policy)}
+
+        for sampling in Sampling:
+            for evaluationMethod in EvaluationMethod:
+                if (problem, mdp_key, sampling, evaluationMethod) in self.results:
+                    values = self.results[problem, mdp_key, sampling, evaluationMethod]
+                    if len(values) == 0:
+                        continue
+                    average_value = _np.mean(values)
+                    variance = _np.var(values)
+                    lowest_value = _np.min(values)
+                    to_write[str(sampling) + "-" + str(evaluationMethod)] = {
+                        "average_value": average_value,
+                        "variance": variance,
+                        "lowest_value": lowest_value,
+                        "sample_size": len(values),
+                        "filter_ratio": self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]
+                    }
+
+        to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
+
+        self.file_to_write.write(to_write_str + "\n")
+
+
     """
     Run the evaluator
     """
     def run(self):
-        # a place to store the results
-        results = {}
-
         # for all problems
         for problem_key, problem in enumerate(self.problems):
             # create a set with transition kernels similar to problem (as specified by options)
@@ -76,13 +107,10 @@ class Evaluator(object):
 
             # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-                # filter ratio per MDP
-                filter_ratio = 0
-
                 # build mdp for problem
                 mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
 
-                # output to the console
+                # output to the console what we are doing
                 print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
 
                 # run mdp
@@ -90,81 +118,41 @@ class Evaluator(object):
 
                 # see if we need to evaluate on all results
                 if self.options.evaluate_all:
-                    results[problem_key, Sampling.ALL, EvaluationMethod.COMPUTED] = ps.computeMDP(mdp)
-                    results[problem_key, Sampling.ALL, EvaluationMethod.SIMULATED] = ps.simulateMDP(mdp)
-
-                    # result[ALL_KEY, COMPUTED_KEY], result[ALL_KEY, SIMULATED_KEY] = \
-                    #     self.evaluate_policy_on_problem_list(mdp.policy, self.samples)
+                    if self.options.do_computation:
+                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.COMPUTED, ps.computeMDP(mdp))
+                    if self.options.do_simulation:
+                        self.log(problem_key, mdp_key, Sampling.ALL, EvaluationMethod.SIMULATED, ps.simulateMDP(mdp))
 
                 # see if we need inner or outer samples
                 if self.options.evaluate_inner or self.options.evaluate_outer:
-                    self.inner_samples, self.outer_samples = ps.filter(mdp)
+                    self.inner_samples, self.outer_samples = ps.split(mdp)
 
                 # see if we need to evaluate on inner results
                 if self.options.evaluate_inner:
-                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED] = \
-                        self.inner_samples.computeMDP(mdp)
-                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED] = \
-                        self.inner_samples.simulateMDP(mdp)
-
-                    # store the ratio of filtered samples in results
-                    # result[INNER_KEY, FILTER_RATIO_KEY]\
                     filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
+                    if self.options.do_computation:
+                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED,
+                                 self.inner_samples.computeMDP(mdp), filter_ratio)
+                    if self.options.do_simulation:
+                        self.log(problem_key, mdp_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED,
+                                 self.inner_samples.simulateMDP(mdp), filter_ratio)
 
                 # see if we need to evaluate on outer results
                 if self.options.evaluate_outer:
-                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.COMPUTED] = \
-                        self.outer_samples.computeMDP(mdp)
-                    results[problem_key, Sampling.IN_SAMPLING, EvaluationMethod.SIMULATED] = \
-                        self.outer_samples.simulateMDP(mdp)
+                    filter_ratio = len(self.outer_samples.samples) / len(ps.samples)
+                    if self.options.do_computation:
+                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.COMPUTED,
+                                 self.outer_samples.computeMDP(mdp), filter_ratio)
+                    if self.options.do_simulation:
+                        self.log(problem_key, mdp_key, Sampling.OUT_SAMPLING, EvaluationMethod.SIMULATED,
+                                 self.outer_samples.simulateMDP(mdp), filter_ratio)
+
+                # write log
+                self.write_log(problem_key, mdp_key, mdp)
+        self.plot_results()
 
 
-                # maybe only the outer samples are interesting.
-                # If you think so, uncomment and implement something for _np.difference that works
-                #
-                #     outer_samples = _np.difference(self.samples, inner_samples)
-                #     result[OUTER_KEY, COMPUTED_KEY], result[OUTER_KEY, SIMULATED_KEY] = \
-                #         self.evaluate_policy_on_problem_list(policy, outer_samples)
-
-                # return result, filter_ratio
-
-                # evaluate mdp on problem set
-                # results[problem_key, mdp_key], filter_ratio = ps.evaluate(mdp)
-                self.log_results(problem_key, mdp_key, mdp.policy, results[problem_key, mdp_key], filter_ratio)
-
-        self.plot_results(results)
-        self.file_to_write.close()
-
-    def log_results(self, problem_key, mdp_key, policy, results, filter_ratio):
-        # define logging behavior here
-        # maybe add "verbose" or "minimal" etc.
-        if self.options.logging_behavior is None:
-            to_write = {
-                "mdp": mdp_key,
-                "problem": problem_key,
-                "policy": str(policy),
-                "filter_ratio": filter_ratio
-
-            }
-            for (set_key, eval_key), values in results.items():
-                if len(values) == 0:
-                    continue
-                average_value = _np.mean(values)
-                variance = _np.var(values)
-                lowest_value = _np.min(values)
-                to_write[set_key + "-" + eval_key] = {
-                    "average_value": average_value,
-                    "variance": variance,
-                    "lowest_value": lowest_value,
-                    "sample_size": len(values)
-                }
-            to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
-        else:
-            to_write_str = "no logging due unsupported logging format: " + self.options.logging_behavior
-
-        self.file_to_write.write(to_write_str + "\n")
-
-    def plot_results(self, results):
+    def plot_results(self):
 
         figures = {}
         # legend = []
