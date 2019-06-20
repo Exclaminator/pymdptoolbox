@@ -172,8 +172,11 @@ class Evaluator(object):
                 results = {}
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
                     if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
-                        results[str(mdp_constructor)] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        sns.distplot(results[str(mdp_constructor)], hist=self.options.plot_hist, label=str(mdp_constructor))
+                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                               self.problems[problem_key].reward_matrix,
+                                               self.problems[problem_key].discount_factor).getName()
+                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                        sns.distplot(results[name], hist=self.options.plot_hist, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
