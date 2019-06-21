@@ -105,6 +105,7 @@ def Robust(innerfunction):
             self.innerfunction = innerfunction
             self.v_next = full(self.V.shape, -inf)
             self.sigma = 0
+            self.max_iter = max_iter #is set to wrong value by ValueIteration
 
         def getName(self):
             return self.innerfunction.getName()
@@ -314,6 +315,16 @@ class Likelihood(InnerMethod):
                 for j in range(self.problem.S):
                     self.bMax[a, i] += self.problem.P[a][i][j] * math.log(self.problem.P[a][i][j] + sys.float_info.epsilon)
 
+        self.bi = ones((self.problem.A, self.problem.S)) * self.beta
+        for a in range(self.problem.A):
+            for i in range(self.problem.S):
+                for k in range(self.problem.S):
+                    if i == k:
+                        continue
+                    for j in range(self.problem.S):
+                        self.bi[a, i] += self.problem.P[a][k][j] * math.log(
+                            self.problem.P[a][k][j] + sys.float_info.epsilon)
+        self.bi = minimum(self.bi, self.bMax  - sys.float_info.epsilon)
     #TODO beta computation is a bit more complicate (paper removes subscripts)
      #   if self.beta > max(self.bMax):
      #       print("Beta will be cut of to " + str(max(self.bMax)))
@@ -331,9 +342,9 @@ class Likelihood(InnerMethod):
 
     # calculate update scalar for inner method
     def run(self, state, action):
-        beta = self.beta #TODO calculate beta
-        if beta > self.bMax[action, state]:
-            beta = self.bMax[action, state] - sys.float_info.epsilon
+        beta = self.bi [action][state] #TODO calculate beta
+        # if beta > self.bMax[action, state]:
+        #     beta = self.bMax[action, state] - sys.float_info.epsilon
         # todo combine beta with beta_max
         mu_upper = min(self.problem.V)
         e_factor = math.pow(math.e, beta - self.bMax[action, state]) - sys.float_info.epsilon
@@ -343,15 +354,15 @@ class Likelihood(InnerMethod):
       #  if mu_upper < mu_lower and mu_lower - mu_upper > self.delta:
       #      print("BUG")
 
-     #   print("{} - {}".format(mu_lower, mu_upper))
-        while (mu_upper - mu_lower) > self.delta:  # TODO
+        #print("{} - {}".format(mu_lower, mu_upper))
+        while (mu_upper - mu_lower) > abs(mu_lower) * self.delta:  # TODO
             diff = mu_upper - mu_lower
             mu = (mu_upper + mu_lower) / 2
             if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
                 mu_upper = mu
             else:
                 mu_lower = mu
-     #   print(mu)
+        #print(mu)
         lmbda = self.lambdaLikelyhoodModel(mu, state, action)
         if  abs(lmbda - sys.float_info.epsilon) <= sys.float_info.epsilon:
             return mu
@@ -365,7 +376,7 @@ class Likelihood(InnerMethod):
     # privately used methods
 
     def derivativeOfSigmaLikelyhoodModel(self, mu, state, action):
-        dsigma =  self.beta -  sum(
+        dsigma =  self.bi [action][state]  -  sum(
              multiply(
                 self.problem.P[action][state],
                  log(
