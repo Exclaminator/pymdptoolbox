@@ -204,11 +204,13 @@ class Ellipsoid(InnerMethod):
         objective = LinExpr()
         objective += dot(p, self.problem.V)
         model.setObjective(objective, GRB.MINIMIZE)
+        # below is old. But this criteria rejected a lot of samples as probabilities can go to 0
+        # also I don't think it fully matches the paper implementation
         # model.addConstr(divide(sum(
         #     multiply(
         #         subtract(p, self.problem.P[action][state]),
         #         subtract(p, self.problem.P[action][state]))
-        # ), len(self.problem.P[action][state])
+        # ), self.problem.P[action][state]
         # ) <= self.beta)
 
         model.addConstr(mean(
