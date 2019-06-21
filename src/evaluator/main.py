@@ -38,6 +38,7 @@ def run_default():
             evaluate_inner=True,
             sample_var=0.15,
             sample_amount=1000,
+            sample_uniform=False
         ))
     evaluator.run()
 

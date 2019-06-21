@@ -36,12 +36,20 @@ class Problem(object):
     def getProblemSet(self, options):
         variance = options.sample_var
         sample_amount = options.sample_amount
+
         ttk = self.transition_kernel
 
-        # draw from normal
         # index 1 and 2 are kernel indices, 3 is the sample index
-        non_normalized_tks = _np.random.normal(_np.repeat(ttk[:, :, :, _np.newaxis], sample_amount, axis=3),
-                                               variance)
+        mu = _np.repeat(ttk[:, :, :, _np.newaxis], sample_amount, axis=3)
+
+        if options.sample_uniform:
+            # sample from uniform
+            sqrt3var = 3 * _np.sqrt(variance)
+            non_normalized_tks = _np.random.uniform(mu - sqrt3var, mu + sqrt3var)
+        else:
+            # sample from normal
+            non_normalized_tks = _np.random.normal(mu, variance)
+
         problems_out = []
         for i in range(sample_amount):
             tk = self.normalize_tk(non_normalized_tks[:, :, :, i])
