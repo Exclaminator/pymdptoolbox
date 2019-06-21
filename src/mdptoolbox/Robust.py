@@ -308,11 +308,11 @@ class Likelihood(InnerMethod):
     # attach problem
     def attachProblem(self, problem):
         InnerMethod.attachProblem(self, problem)
-        self.bMax = zeros(self.problem.A)
+        self.bMax = zeros((self.problem.A, self.problem.S))
         for a in range(self.problem.A):
             for i in range(self.problem.S):
                 for j in range(self.problem.S):
-                    self.bMax[a] -= self.problem.P[a][i][j] * math.log(self.problem.P[a][i][j] + sys.float_info.epsilon)
+                    self.bMax[a, i] += self.problem.P[a][i][j] * math.log(self.problem.P[a][i][j] + sys.float_info.epsilon)
 
     #TODO beta computation is a bit more complicate (paper removes subscripts)
      #   if self.beta > max(self.bMax):
@@ -332,9 +332,11 @@ class Likelihood(InnerMethod):
     # calculate update scalar for inner method
     def run(self, state, action):
         beta = self.beta #TODO calculate beta
+        if beta > self.bMax[action, state]:
+            beta = self.bMax[action, state] - sys.float_info.epsilon
         # todo combine beta with beta_max
         mu_upper = min(self.problem.V)
-        e_factor = math.pow(math.e, beta) - sys.float_info.epsilon
+        e_factor = math.pow(math.e, beta - self.bMax[action, state]) - sys.float_info.epsilon
         v_avg = dot(self.problem.V, self.problem.P[action][state])
         mu_lower = (min(self.problem.V) - e_factor * v_avg) / (1 - e_factor)  # TODO bug
         mu = (mu_upper + mu_lower) / 2
