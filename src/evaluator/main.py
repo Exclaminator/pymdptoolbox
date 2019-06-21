@@ -16,17 +16,17 @@ def run_default():
     # get tk_low and tk_up for the interval model
     forest = Problem.get_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
     tk = forest.transition_kernel
-    tk_low = (tk-0.7).clip(min=0)
-    tk_up = (tk+0.4).clip(max=1)
+    tk_low = (tk-0.5).clip(min=0)
+    tk_up = (tk+0.5).clip(max=1)
 
     # problems can also be supplied as a list
     evaluator = Evaluator(
         forest,
         [
-            Robust(Wasserstein(0.1)),
-            Robust(Ellipsoid(1)),
+            Robust(Wasserstein(0.7)),
+            Robust(Ellipsoid(0.01)),
             ValueIteration,
-            Robust(Likelihood(-0.4, 0.01)),
+            Robust(Likelihood(-0.6, 0.01)),
             Robust(Interval(tk_low, tk_up))
         ],
         Options(

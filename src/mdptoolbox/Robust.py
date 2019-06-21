@@ -115,11 +115,11 @@ def Robust(innerfunction):
         def run(self):
             # Run the modified policy iteration algorithm.
             self._startRun()
-
+            self.V = ones(self.S)
             # Itterate
             while True:
                 self.iter += 1
-
+                self.v_next = full(self.V.shape, -inf)
                 # update value
                 for s in range(self.S):
                     for a in range(self.A):
