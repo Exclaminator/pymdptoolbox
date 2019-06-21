@@ -24,7 +24,7 @@ def run_default():
         forest,
         [
             Robust(Wasserstein(0.1)),
-            Robust(Ellipsoid(1)),
+            Robust(Ellipsoid(0.25)),
             ValueIteration,
             Robust(Likelihood(-0.4, 0.01)),
             Robust(Interval(tk_low, tk_up))
@@ -38,6 +38,7 @@ def run_default():
             evaluate_inner=True,
             sample_var=0.15,
             sample_amount=1000,
+            sample_uniform=False
         ))
     evaluator.run()
 
