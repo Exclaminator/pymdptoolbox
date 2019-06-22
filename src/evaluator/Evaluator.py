@@ -5,6 +5,7 @@ import numpy as _np
 from matplotlib import pyplot
 import seaborn as sns
 from enum import Enum
+from Options import LoggingBehavior
 
 class Sampling(Enum):
     ALL = 0
@@ -15,7 +16,6 @@ class Sampling(Enum):
 class EM(Enum):
     COMPUTED = 0
     SIMULATED = 1
-
 
 class Evaluator(object):
     """
@@ -72,35 +72,57 @@ class Evaluator(object):
         self.filter_ratio[problem, mdp_key, sampling, evaluationMethod] = filter_ratio
 
     def write_log(self, problem, mdp_key, mdp):
-        to_write = {
-            "problem": self.problems[problem].getName(),
-            "mdp": mdp.getName(),
-            "time": self.time[problem, mdp_key],
-            "policy": str(mdp.policy)}
 
-        for sampling in Sampling:
-            for evaluationMethod in EM:
-                if (problem, mdp_key, sampling, evaluationMethod) in self.results:
-                    values = self.results[problem, mdp_key, sampling, evaluationMethod]
-                    if len(values) == 0:
-                        continue
-                    average_value = _np.mean(values)
-                    variance = _np.var(values)
-                    lowest_value = _np.min(values)
-                    write_key = str(sampling) + "-" + str(evaluationMethod)
-                    to_write[write_key] = {
-                        "average_value": average_value,
-                        "variance": variance,
-                        "lowest_value": lowest_value,
-                        "sample_size": len(values)
-                    }
-                    fr = self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]
-                    if fr is not None:
-                        to_write[write_key]["filter_ratio"] = fr
+        if self.options.logging_behavior == LoggingBehavior.TABLE:
+            to_write_str = ""
+            for sampling in Sampling:
+                for evaluationMethod in EM:
+                    if (problem, mdp_key, sampling, evaluationMethod) in self.results:
+                        values = self.results[problem, mdp_key, sampling, evaluationMethod]
+                        name = mdp.getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+                        average_value = _np.mean(values)
+                        variance = _np.var(values)
+                        lowest_value = _np.min(values)
+                        delimiter = "\t"
+                        row = name + delimiter \
+                            + str(self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]) + delimiter \
+                            + str(lowest_value) + delimiter \
+                            + str(average_value) + delimiter \
+                            + str(variance) + delimiter \
+                            + delimiter + str(self.time[problem, mdp_key]) + "\n"
+                        to_write_str += row
 
-        to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
+        elif self.options.logging_behavior == LoggingBehavior.DEFAULT:
+            to_write = {
+                "problem": self.problems[problem].getName(),
+                "mdp": mdp.getName(),
+                "time": self.time[problem, mdp_key],
+                "policy": str(mdp.policy)}
 
-        self.file_to_write.write(to_write_str + "\n")
+            for sampling in Sampling:
+                for evaluationMethod in EM:
+                    if (problem, mdp_key, sampling, evaluationMethod) in self.results:
+                        values = self.results[problem, mdp_key, sampling, evaluationMethod]
+                        if len(values) == 0:
+                            continue
+                        average_value = _np.mean(values)
+                        variance = _np.var(values)
+                        lowest_value = _np.min(values)
+                        write_key = str(sampling) + "-" + str(evaluationMethod)
+                        to_write[write_key] = {
+                            "average_value": average_value,
+                            "variance": variance,
+                            "lowest_value": lowest_value,
+                            "sample_size": len(values)
+                        }
+                        fr = self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]
+                        if fr is not None:
+                            to_write[write_key]["filter_ratio"] = fr
+
+            to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
+            to_write_str += "\n"
+
+        self.file_to_write.write(to_write_str)
 
 
     """

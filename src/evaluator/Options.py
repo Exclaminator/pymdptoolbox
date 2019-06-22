@@ -1,3 +1,9 @@
+from enum import Enum
+
+
+class LoggingBehavior(Enum):
+    DEFAULT = 0
+    TABLE = 1
 
 
 class Options(object):
@@ -10,7 +16,7 @@ class Options(object):
     sample_uniform = False
 
     save_figures = True
-    logging_behavior = None
+    logging_behavior = LoggingBehavior.DEFAULT
 
     log_dir = None
     figure_path = None

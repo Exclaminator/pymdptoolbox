@@ -1,5 +1,5 @@
 from Evaluator import Evaluator
-from Options import Options
+from Options import Options, LoggingBehavior
 from mdptoolbox.Robust import *
 from mdptoolbox.mdp import ValueIteration
 
@@ -23,13 +23,13 @@ def run_default():
         forest,
         [
             Robust(Wasserstein(0.07)),
-            Robust(Ellipsoid(0.13)),
+            Robust(Ellipsoid(0.1312)),
             ValueIteration,
             Robust(Likelihood(0.6215, 0.001)), #range 1.5 - 0
             Robust(Interval(tk_low, tk_up))
         ],
         Options(
-            number_of_paths=1000,
+            number_of_paths=100,
             number_of_sims=1000,
             plot_hist=True,
             do_simulation=False,
@@ -37,8 +37,9 @@ def run_default():
             evaluate_inner=True,
             evaluate_outer=True,
             sample_var=0.05,
-            sample_amount=10000,
-            sample_uniform=False
+            sample_amount=1000,
+            sample_uniform=False,
+            logging_behavior=LoggingBehavior.TABLE
         ))
     evaluator.run()
 
