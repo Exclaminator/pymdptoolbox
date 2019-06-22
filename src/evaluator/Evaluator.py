@@ -79,6 +79,8 @@ class Evaluator(object):
                 for evaluationMethod in EM:
                     if (problem, mdp_key, sampling, evaluationMethod) in self.results:
                         values = self.results[problem, mdp_key, sampling, evaluationMethod]
+                        if len(values) == 0:
+                            continue
                         name = mdp.getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
                         average_value = _np.mean(values)
                         variance = _np.var(values)
@@ -89,7 +91,8 @@ class Evaluator(object):
                             + str(lowest_value) + delimiter \
                             + str(average_value) + delimiter \
                             + str(variance) + delimiter \
-                            + delimiter + str(self.time[problem, mdp_key]) + "\n"
+                            + str(mdp.policy) + delimiter \
+                            + str(self.time[problem, mdp_key]) + "\n"
                         to_write_str += row
 
         elif self.options.logging_behavior == LoggingBehavior.DEFAULT:

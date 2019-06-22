@@ -37,7 +37,7 @@ def run_default():
             evaluate_inner=True,
             evaluate_outer=True,
             sample_var=0.05,
-            sample_amount=1000,
+            sample_amount=20000,
             sample_uniform=False,
             logging_behavior=LoggingBehavior.TABLE
         ))
