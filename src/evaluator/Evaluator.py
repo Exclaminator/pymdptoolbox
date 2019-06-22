@@ -38,6 +38,10 @@ class Evaluator(object):
 
         self.options = options
 
+        # make sure no paths are skipped when using variance scaling.
+        if self.options.variance_scaling:
+            self.options.number_of_paths = self.options.sample_amount
+
         # find out where to log and make corosponding folders
         self.log_dir = "../../logs/" + datetime.now().strftime('%Y%m%d-%H%M%S') + "/"
         log_filename = self.log_dir + "results.log"
