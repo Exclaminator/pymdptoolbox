@@ -39,6 +39,13 @@ class Problem(object):
         # index 1 and 2 are kernel indices, 3 is the sample index
         mu = _np.repeat(ttk[:, :, :, _np.newaxis], sample_amount, axis=3)
 
+        # if we use variance scaling.
+        # make a kernel for each variance between upper and lower limit
+        if options.variance_scaling:
+            variance = _np.divide(
+                range(options.variance_lower, options.sample_amount),
+                options.sample_amount / options.variance_upper)
+
         if options.sample_uniform:
             # sample from uniform
             tk_low, tk_up = Interval.compute_interval(mu, variance)

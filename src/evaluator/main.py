@@ -29,16 +29,19 @@ def run_default():
             Robust(Interval(tk_low, tk_up))
         ],
         Options(
-            number_of_paths=100,
+            number_of_paths=2000,
             number_of_sims=1000,
             plot_hist=True,
             do_simulation=False,
             evaluate_all=True,
             evaluate_inner=True,
             evaluate_outer=True,
-            sample_var=0.05,
-            sample_amount=20000,
+            sample_var=0.5,
+            sample_amount=2000,
             sample_uniform=False,
+            variance_scaling=True,
+            variance_lower=0,
+            variance_upper=1,
             logging_behavior=LoggingBehavior.TABLE
         ))
     evaluator.run()
