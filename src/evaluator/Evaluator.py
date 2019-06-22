@@ -211,16 +211,24 @@ class Evaluator(object):
                 pyplot.xlabel("Value")
                 pyplot.ylabel("Frequency")
 
-                results = {}
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    results = {}
                     if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
                         name = mdp_constructor(self.problems[problem_key].transition_kernel,
                                                self.problems[problem_key].reward_matrix,
                                                self.problems[problem_key].discount_factor).getName()
                         # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
-                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        if len(results[name]) > 0:
-                            sns.distplot(results[name], hist=self.options.plot_hist, label=name)
+                        if len(self.results[problem_key, mdp_key, sampling, evaluationMethod]) > 0:
+                            results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+
+                    min_length = _np.inf
+                    for name in results:
+                        min_length = min(min_length, len(results[name]))
+
+                    holder = {}
+                    for name in results:
+                        holder[name] = random.sample(results[name], min_length)
+                        sns.distplot(holder[name], hist=self.options.plot_hist, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
