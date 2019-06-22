@@ -45,7 +45,7 @@ def run_default():
             non_robust_actions=[], # replace with [1] if for action there should be no robustness
             variance_scaling=True,
             variance_lower=0,
-            variance_upper=0.1,
+            variance_upper=1,
             logging_behavior=LoggingBehavior.TABLE
         ))
     evaluator.run()
