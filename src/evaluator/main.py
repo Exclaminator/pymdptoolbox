@@ -35,8 +35,9 @@ def run_default():
             do_simulation=False,
             evaluate_all=True,
             evaluate_inner=True,
+            evaluate_outer=True,
             sample_var=0.05,
-            sample_amount=1000,
+            sample_amount=10000,
             sample_uniform=False
         ))
     evaluator.run()

@@ -5,6 +5,7 @@ import mdptoolbox.example
 import scipy as sp
 from evaluator.Evaluator import Sampling
 from mdptoolbox.Robust import Interval
+import warnings
 
 """
 creates a problem from a dict.
@@ -177,6 +178,7 @@ class ProblemSet(object):
 
     def computeMDP(self, mdp):
         # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
+        self.resultsComputed = []
         for problem in self.samples:
             self.resultsComputed.append(problem.computeMDP(mdp))
         return self.resultsComputed
@@ -184,6 +186,19 @@ class ProblemSet(object):
     #  if self.options.do_simulation:
     def simulateMDP(self, mdp):
         # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
+        self.resultsSimulated = []
         for problem in self.samples:
             self.resultsSimulated.append(problem.simulateMDP(mdp, self.options))
         return self.resultsSimulated
+
+    def limit(self, number_of_paths):
+        # returns a new problem set, with samples limited
+        # limit the problem set to a fixed amount of problems
+        if len(self.samples) < number_of_paths:
+            warnings.warn("number_of_paths ({}) is larger than the number of filtered policies ({})"
+                          .format(number_of_paths, len(self.samples)))
+            samples = self.samples
+        else:
+            samples = self.samples[0:number_of_paths]
+
+        return ProblemSet(samples, self.problem, self.options, self.sampling)

@@ -6,7 +6,6 @@ from matplotlib import pyplot
 import seaborn as sns
 from enum import Enum
 
-
 class Sampling(Enum):
     ALL = 0
     IN = 1
@@ -88,13 +87,16 @@ class Evaluator(object):
                     average_value = _np.mean(values)
                     variance = _np.var(values)
                     lowest_value = _np.min(values)
-                    to_write[str(sampling) + "-" + str(evaluationMethod)] = {
+                    write_key = str(sampling) + "-" + str(evaluationMethod)
+                    to_write[write_key] = {
                         "average_value": average_value,
                         "variance": variance,
                         "lowest_value": lowest_value,
-                        "sample_size": len(values),
-                        "filter_ratio": self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]
+                        "sample_size": len(values)
                     }
+                    fr = self.filter_ratio[problem, mdp_key, sampling, evaluationMethod]
+                    if fr is not None:
+                        to_write[write_key]["filter_ratio"] = fr
 
         to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
 
@@ -124,38 +126,44 @@ class Evaluator(object):
                 # log time that it took
                 self.time[problem_key, mdp_key] = mdp.time
 
-                # see if we need to evaluate on all results
-                if self.options.evaluate_all:
-                    if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
-                                 ps.computeMDP(mdp), ps.distances)
-                    if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
-                                 ps.simulateMDP(mdp), ps.distances)
+                total_sample_count = len(ps.samples)
+                number_of_paths = self.options.number_of_paths
 
-                # see if we need inner or outer samples
+                # create inner and outer samples sets
                 if self.options.evaluate_inner or self.options.evaluate_outer:
                     self.inner_samples, self.outer_samples = ps.split(mdp)
 
-                # see if we need to evaluate on inner results
+                # evaluate on all results
+                if self.options.evaluate_all:
+                    ps_lim = ps.limit(number_of_paths)
+                    if self.options.do_computation:
+                        self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
+                                 ps_lim.computeMDP(mdp), ps_lim.distances)
+                    if self.options.do_simulation:
+                        self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
+                                 ps_lim.simulateMDP(mdp), ps_lim.distances)
+
+                # evaluate on inner results
                 if self.options.evaluate_inner:
-                    filter_ratio = len(self.inner_samples.samples) / len(ps.samples)
+                    filter_ratio = len(self.inner_samples.samples) / total_sample_count
+                    in_lim = self.inner_samples.limit(number_of_paths)
                     if self.options.do_computation:
                         self.log(problem_key, mdp_key, Sampling.IN, EM.COMPUTED,
-                                 self.inner_samples.computeMDP(mdp), self.inner_samples.distances, filter_ratio)
+                                 in_lim.computeMDP(mdp), in_lim.distances, filter_ratio)
                     if self.options.do_simulation:
                         self.log(problem_key, mdp_key, Sampling.IN, EM.SIMULATED,
-                                 self.inner_samples.simulateMDP(mdp), self.inner_samples.distances, filter_ratio)
+                                 in_lim.simulateMDP(mdp), in_lim.distances, filter_ratio)
 
-                # see if we need to evaluate on outer results
+                # evaluate on outer results
                 if self.options.evaluate_outer:
-                    filter_ratio = len(self.outer_samples.samples) / len(ps.samples)
+                    filter_ratio = len(self.outer_samples.samples) / total_sample_count
+                    out_lim = self.outer_samples.limit(number_of_paths)
                     if self.options.do_computation:
                         self.log(problem_key, mdp_key, Sampling.OUT, EM.COMPUTED,
-                                 self.outer_samples.computeMDP(mdp), self.outer_samples.distances, filter_ratio)
+                                 out_lim.computeMDP(mdp), out_lim.distances, filter_ratio)
                     if self.options.do_simulation:
                         self.log(problem_key, mdp_key, Sampling.OUT, EM.SIMULATED,
-                                 self.outer_samples.simulateMDP(mdp), self.outer_samples.distances, filter_ratio)
+                                 out_lim.simulateMDP(mdp), out_lim.distances, filter_ratio)
 
                 # write log
                 self.write_log(problem_key, mdp_key, mdp)
