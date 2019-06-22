@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from datetime import datetime
 import numpy as _np
 from matplotlib import pyplot
@@ -38,6 +39,10 @@ class Evaluator(object):
 
         self.options = options
 
+        # make sure no paths are skipped when using variance scaling.
+        if self.options.variance_scaling:
+            self.options.number_of_paths = self.options.sample_amount
+
         # find out where to log and make corosponding folders
         self.log_dir = "../../logs/" + datetime.now().strftime('%Y%m%d-%H%M%S') + "/"
         log_filename = self.log_dir + "results.log"
@@ -45,6 +50,9 @@ class Evaluator(object):
 
         # create log file
         self.file_to_write = open(log_filename, "w+")
+
+        # log options
+        # self.file_to_write.write(self.options.toJSON() + "\n")
 
         # we have no results so far
         self.results = None
@@ -211,16 +219,24 @@ class Evaluator(object):
                 pyplot.xlabel("Value")
                 pyplot.ylabel("Frequency")
 
-                results = {}
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    results = {}
                     if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
                         name = mdp_constructor(self.problems[problem_key].transition_kernel,
                                                self.problems[problem_key].reward_matrix,
                                                self.problems[problem_key].discount_factor).getName()
                         # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
-                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        if len(results[name]) > 0:
-                            sns.distplot(results[name], hist=self.options.plot_hist, label=name)
+                        if len(self.results[problem_key, mdp_key, sampling, evaluationMethod]) > 0:
+                            results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+
+                    min_length = _np.inf
+                    for name in results:
+                        min_length = min(min_length, len(results[name]))
+
+                    holder = {}
+                    for name in results:
+                        holder[name] = random.sample(results[name], min_length)
+                        sns.distplot(holder[name], hist=self.options.plot_hist, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
@@ -246,55 +262,10 @@ class Evaluator(object):
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
                         distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
                         l = min(len(results[name]), len(distances[name]))
-                        sns.scatterplot(x=distances[name][1:l], y=results[name][1:l], s=10, label=name)
+                        sns.scatterplot(x=distances[name][1:l], y=results[name][1:l], s=5, label=name)
 
                 pyplot.legend()
-                pyplot.savefig(self.log_dir + title + "scatter.png", num=self.figures[problem_key, sampling, evaluationMethod],
+                pyplot.savefig(self.log_dir + title + "scatter.png", num=self.figures[problem_key, sampling,
+                                                                                      evaluationMethod],
                                dpi=150, format="png")
                 pyplot.show()
-
-    #
-    #
-    # def plot_results(self):
-    #
-    #     figures = {}
-    #     # legend = []
-    #
-    #     # create all nesseceary plots
-    #     for problem_key, problem in enumerate(self.problems):
-    #         for sampling in Sampling:
-    #             for evaluationMethod in EvaluationMethod:
-    #                 found = False
-    #                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-    #                     if (problem, mdp_key, sampling, evaluationMethod) in self.results:
-    #                         found = True
-    #                 if found:
-    #                     figures[problem_key, sampling, evaluationMethod] = pyplot.figure()
-    #
-    #     for (problem_key, mdp_key), mp_result in results.items():
-    #          for (set_key, evaluation_key), values in mp_result.items():
-    #             if len(values) == 0:
-    #                 continue
-    #             # add figure to dict if not added
-    #             if (problem_key, set_key, evaluation_key) not in figures.keys():
-    #                 # initialize figure
-    #                 figure = pyplot.figure()
-    #                 figures[problem_key, set_key, evaluation_key] = figure
-    #             else:
-    #                 # set figure index
-    #                 pyplot.figure(figures[problem_key, set_key, evaluation_key].number)
-    #
-    #             # plot to the figure which is initialized in the if statement above
-    #             sns.distplot(values, hist=self.options.plot_hist, label=mdp_key)
-    #
-    #     for (problem_key, set_key, evaluation_key), figure in figures.items():
-    #         # plot and show figure
-    #         pyplot.figure(figure.number)
-    #         title = problem_key + "-" + set_key + "-" + evaluation_key
-    #         pyplot.title(title)
-    #         pyplot.xlabel("Value")
-    #         pyplot.ylabel("Frequency")
-    #         pyplot.legend()
-    #         pyplot.savefig(self.log_dir + title + ".png", num=figure, dpi=150, format="png")
-    #
-    #     pyplot.show()

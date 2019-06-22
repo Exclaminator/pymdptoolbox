@@ -193,9 +193,9 @@ class Ellipsoid(InnerMethod):
                     2)
                 ) >= self.beta
                 if out_of_bounds:
-                    return False
+                    return True
 
-        return True
+        return False
 
     # calculate update scalar for inner method
     def run(self, state, action):
