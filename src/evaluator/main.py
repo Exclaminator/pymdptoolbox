@@ -14,19 +14,22 @@ default configuration, runs the forest problem on some models
 def run_default():
     # get tk_low and tk_up for the interval model
     forest = Problem.get_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
+    random = Problem.get_random_problem(10, 10, 0.9)
     tk_low, tk_up = Interval.compute_interval(forest.transition_kernel, 0.0138)
+    rtk_low, rtk_up = Interval.compute_interval(random.transition_kernel, 0.0138)
     # tk_low = (tk-0.5).clip(min=0)
     # tk_up = (tk+0.5).clip(max=1)
 
     # problems can also be supplied as a list
     evaluator = Evaluator(
-        forest,
+        [forest, random],
         [
             Robust(Wasserstein(0.07)),
             Robust(Ellipsoid(0.1312)),
             ValueIteration,
-            Robust(Likelihood(0.6125, 0.001)), #range 1.5 - 0ish
-            Robust(Interval(tk_low, tk_up))
+            Robust(Likelihood(0.6125, 0.001)), # range 1.5 - 0ish
+            Robust(Interval(tk_low, tk_up)),
+            Robust(Interval(rtk_low, rtk_up))
         ],
         Options(
             number_of_paths=2000,
@@ -42,7 +45,7 @@ def run_default():
             non_robust_actions=[], # replace with [1] if for action there should be no robustness
             variance_scaling=True,
             variance_lower=0,
-            variance_upper=1,
+            variance_upper=0.1,
             logging_behavior=LoggingBehavior.TABLE
         ))
     evaluator.run()

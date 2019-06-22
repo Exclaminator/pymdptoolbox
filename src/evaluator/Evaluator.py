@@ -147,60 +147,62 @@ class Evaluator(object):
 
             # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-                # build mdp for problem
-                mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
+                try:
+                    # build mdp for problem
+                    mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
 
-                # output to the console what we are doing
-                print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
+                    # output to the console what we are doing
+                    print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
 
-                # run mdp
-                mdp.run()
+                    # run mdp
+                    mdp.run()
 
-                # log time that it took
-                self.time[problem_key, mdp_key] = mdp.time
+                    # log time that it took
+                    self.time[problem_key, mdp_key] = mdp.time
 
-                total_sample_count = len(ps.samples)
-                number_of_paths = self.options.number_of_paths
+                    total_sample_count = len(ps.samples)
+                    number_of_paths = self.options.number_of_paths
 
-                # create inner and outer samples sets
-                if self.options.evaluate_inner or self.options.evaluate_outer:
-                    self.inner_samples, self.outer_samples = ps.split(mdp)
+                    # create inner and outer samples sets
+                    if self.options.evaluate_inner or self.options.evaluate_outer:
+                        self.inner_samples, self.outer_samples = ps.split(mdp)
 
-                # evaluate on all results
-                if self.options.evaluate_all:
-                    ps_lim = ps.limit(number_of_paths)
-                    if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
-                                 ps_lim.computeMDP(mdp), ps_lim.distances)
-                    if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
-                                 ps_lim.simulateMDP(mdp), ps_lim.distances)
+                    # evaluate on all results
+                    if self.options.evaluate_all:
+                        ps_lim = ps.limit(number_of_paths)
+                        if self.options.do_computation:
+                            self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
+                                     ps_lim.computeMDP(mdp), ps_lim.distances)
+                        if self.options.do_simulation:
+                            self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
+                                     ps_lim.simulateMDP(mdp), ps_lim.distances)
 
-                # evaluate on inner results
-                if self.options.evaluate_inner:
-                    filter_ratio = len(self.inner_samples.samples) / total_sample_count
-                    in_lim = self.inner_samples.limit(number_of_paths)
-                    if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.IN, EM.COMPUTED,
-                                 in_lim.computeMDP(mdp), in_lim.distances, filter_ratio)
-                    if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.IN, EM.SIMULATED,
-                                 in_lim.simulateMDP(mdp), in_lim.distances, filter_ratio)
+                    # evaluate on inner results
+                    if self.options.evaluate_inner:
+                        filter_ratio = len(self.inner_samples.samples) / total_sample_count
+                        in_lim = self.inner_samples.limit(number_of_paths)
+                        if self.options.do_computation:
+                            self.log(problem_key, mdp_key, Sampling.IN, EM.COMPUTED,
+                                     in_lim.computeMDP(mdp), in_lim.distances, filter_ratio)
+                        if self.options.do_simulation:
+                            self.log(problem_key, mdp_key, Sampling.IN, EM.SIMULATED,
+                                     in_lim.simulateMDP(mdp), in_lim.distances, filter_ratio)
 
-                # evaluate on outer results
-                if self.options.evaluate_outer:
-                    filter_ratio = len(self.outer_samples.samples) / total_sample_count
-                    out_lim = self.outer_samples.limit(number_of_paths)
-                    if self.options.do_computation:
-                        self.log(problem_key, mdp_key, Sampling.OUT, EM.COMPUTED,
-                                 out_lim.computeMDP(mdp), out_lim.distances, filter_ratio)
-                    if self.options.do_simulation:
-                        self.log(problem_key, mdp_key, Sampling.OUT, EM.SIMULATED,
-                                 out_lim.simulateMDP(mdp), out_lim.distances, filter_ratio)
+                    # evaluate on outer results
+                    if self.options.evaluate_outer:
+                        filter_ratio = len(self.outer_samples.samples) / total_sample_count
+                        out_lim = self.outer_samples.limit(number_of_paths)
+                        if self.options.do_computation:
+                            self.log(problem_key, mdp_key, Sampling.OUT, EM.COMPUTED,
+                                     out_lim.computeMDP(mdp), out_lim.distances, filter_ratio)
+                        if self.options.do_simulation:
+                            self.log(problem_key, mdp_key, Sampling.OUT, EM.SIMULATED,
+                                     out_lim.simulateMDP(mdp), out_lim.distances, filter_ratio)
 
-                # write log
-                self.write_log(problem_key, mdp_key, mdp)
-
+                    # write log
+                    self.write_log(problem_key, mdp_key, mdp)
+                except AssertionError as err:
+                    print(err)
             self.plot(problem_key)
 
     def plot(self, problem_key):
