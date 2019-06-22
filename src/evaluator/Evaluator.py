@@ -51,6 +51,9 @@ class Evaluator(object):
         # create log file
         self.file_to_write = open(log_filename, "w+")
 
+        # log options
+        # self.file_to_write.write(self.options.toJSON() + "\n")
+
         # we have no results so far
         self.results = None
         self.inner_samples = None
