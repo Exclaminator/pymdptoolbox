@@ -330,38 +330,34 @@ class Likelihood(InnerMethod):
                         self.bi[a, i] += self.problem.P[a][k][j] * math.log(
                             self.problem.P[a][k][j] + sys.float_info.epsilon)
         self.bi = minimum(self.bi, self.bMax  - sys.float_info.epsilon)
-    #TODO beta computation is a bit more complicate (paper removes subscripts)
+
      #   if self.beta > max(self.bMax):
      #       print("Beta will be cut of to " + str(max(self.bMax)))
      #   self.beta = minimum(self.beta, max(self.bMax))
 
     # see if a transition kernel p is in sample
-    # TODO: make sure this works
     def inSample(self, p) -> bool:
         for a in range(self.problem.A):
             for s in range(self.problem.S):
-                # todo: debug, as it is comparing deep negative numbers with beta
-                # I think this is correct now?
-                if sum(self.problem.P[a][s] * -log(p[a][s] + sys.float_info.epsilon)) > self.beta:
+                if sum(self.problem.P[a][s] * log(p[a][s] + sys.float_info.epsilon)) < self.bi[a][s]:
                     return False
         return True
 
     # calculate update scalar for inner method
     def run(self, state, action):
-        beta = self.bi[action][state] #TODO calculate beta
+        beta = self.bi[action][state]
         # if beta > self.bMax[action, state]:
         #     beta = self.bMax[action, state] - sys.float_info.epsilon
-        # todo combine beta with beta_max
         mu_upper = min(self.problem.V)
         e_factor = math.pow(math.e, beta - self.bMax[action, state]) - sys.float_info.epsilon
         v_avg = dot(self.problem.V, self.problem.P[action][state])
-        mu_lower = (min(self.problem.V) - e_factor * v_avg) / (1 - e_factor)  # TODO bug
+        mu_lower = (min(self.problem.V) - e_factor * v_avg) / (1 - e_factor)
         mu = (mu_upper + mu_lower) / 2
       #  if mu_upper < mu_lower and mu_lower - mu_upper > self.delta:
       #      print("BUG")
 
         #print("{} - {}".format(mu_lower, mu_upper))
-        while (mu_upper - mu_lower) > abs(mu_lower) * self.delta:  # TODO
+        while (mu_upper - mu_lower) > abs(mu_lower) * self.delta:
             diff = mu_upper - mu_lower
             mu = (mu_upper + mu_lower) / 2
             if self.derivativeOfSigmaLikelyhoodModel(mu, state, action) < 0:
