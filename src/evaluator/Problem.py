@@ -192,7 +192,7 @@ class ProblemSet(object):
         return self.resultsSimulated
 
     def limit(self, number_of_paths):
-        # returns a new problem set, with samples limited
+        # returns a new problem set, with a limited set of samples
         # limit the problem set to a fixed amount of problems
         if len(self.samples) < number_of_paths:
             warnings.warn("number_of_paths ({}) is larger than the number of filtered policies ({})"

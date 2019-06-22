@@ -29,7 +29,7 @@ def run_default():
             Robust(Interval(tk_low, tk_up))
         ],
         Options(
-            number_of_paths=100,
+            number_of_paths=1000,
             number_of_sims=1000,
             plot_hist=True,
             do_simulation=False,
