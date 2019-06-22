@@ -14,6 +14,7 @@ class Options(object):
     sample_var = 0.5
     sample_amount = 1000
     sample_uniform = False
+    non_robust_actions = []
 
     save_figures = True
     logging_behavior = LoggingBehavior.DEFAULT

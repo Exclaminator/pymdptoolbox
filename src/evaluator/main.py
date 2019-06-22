@@ -25,7 +25,7 @@ def run_default():
             Robust(Wasserstein(0.07)),
             Robust(Ellipsoid(0.1312)),
             ValueIteration,
-            Robust(Likelihood(0.6215, 0.001)), #range 1.5 - 0
+            Robust(Likelihood(0.6125, 0.001)), #range 1.5 - 0ish
             Robust(Interval(tk_low, tk_up))
         ],
         Options(
@@ -39,6 +39,7 @@ def run_default():
             sample_var=0.05,
             sample_amount=20000,
             sample_uniform=False,
+            non_robust_actions=[], # replace with [1] if for action there should be no robustness
             logging_behavior=LoggingBehavior.TABLE
         ))
     evaluator.run()

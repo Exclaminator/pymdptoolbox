@@ -47,9 +47,13 @@ class Problem(object):
             # sample from normal
             non_normalized_tks = _np.random.normal(mu, variance)
 
+
         problems_out = []
         for i in range(sample_amount):
             tk = self.normalize_tk(non_normalized_tks[:, :, :, i])
+            for a in options.non_robust_actions:
+                tk[a] =  self.transition_kernel[a]
+
             distance = 0
             for a in range(self.transition_kernel.shape[0]):
                 for s in range(self.transition_kernel.shape[1]):
