@@ -262,6 +262,11 @@ class Interval(InnerMethod):
                         return False
         return True
 
+    @staticmethod
+    def compute_interval(mu, variance):
+        sqrt3var = 3 * sqrt(variance)
+        return (mu - sqrt3var).clip(min=0), (mu + sqrt3var).clip(max=1)
+
     # calculate update scalar for inner method
     def run(self, state, action):
         model = Model('IntervalModel')
@@ -336,13 +341,14 @@ class Likelihood(InnerMethod):
         for a in range(self.problem.A):
             for s in range(self.problem.S):
                 # todo: debug, as it is comparing deep negative numbers with beta
-                if sum(self.problem.P[a][s] * log(p[a][s] + sys.float_info.epsilon)) > self.beta:
+                # I think this is correct now?
+                if sum(self.problem.P[a][s] * -log(p[a][s] + sys.float_info.epsilon)) > self.beta:
                     return False
         return True
 
     # calculate update scalar for inner method
     def run(self, state, action):
-        beta = self.bi [action][state] #TODO calculate beta
+        beta = self.bi[action][state] #TODO calculate beta
         # if beta > self.bMax[action, state]:
         #     beta = self.bMax[action, state] - sys.float_info.epsilon
         # todo combine beta with beta_max
@@ -404,7 +410,7 @@ class Wasserstein(InnerMethod):
 
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
-        max_distance = 0;
+        max_distance = 0
         for a in range(self.problem.A):
             for s in range(self.problem.S):
                 max_distance = max(max_distance, wasserstein_distance(self.problem.P[a][s], p[a][s]))

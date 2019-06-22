@@ -4,6 +4,7 @@ from scipy.stats import wasserstein_distance
 import mdptoolbox.example
 import scipy as sp
 from evaluator.Evaluator import Sampling
+from mdptoolbox.Robust import Interval
 
 """
 creates a problem from a dict.
@@ -15,12 +16,7 @@ class Problem(object):
     """
     Creates a problem object. Uses the example module.
     We can initialize it based on some parameters.
-    Next, we can extract P, P_var and R from it, which can be put into a MDP object.
-
-    Types of ambiguities
-    - interval based (p_low <= p <= p_up)
-    - variance based (p = P +/- sqrt(p_var))
-    - distance based (d(p,P) <= beta)
+    Next, we can extract P, R and the discount factor from it, which can be put into a MDP object.
     """
 
     def __init__(self, transition_kernel, reward_matrix, discount_factor=0.9, name="undefined", distance=0):
@@ -44,8 +40,8 @@ class Problem(object):
 
         if options.sample_uniform:
             # sample from uniform
-            sqrt3var = 3 * _np.sqrt(variance)
-            non_normalized_tks = _np.random.uniform(mu - sqrt3var, mu + sqrt3var)
+            tk_low, tk_up = Interval.compute_interval(mu, variance)
+            non_normalized_tks = _np.random.uniform(tk_low, tk_up)
         else:
             # sample from normal
             non_normalized_tks = _np.random.normal(mu, variance)
