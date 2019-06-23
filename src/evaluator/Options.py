@@ -13,7 +13,7 @@ class Options(object):
     number_of_sims = 10
     sample_var = 0.05
     sample_amount = 10000
-    sample_uniform = True
+    sample_method = "uniform" #normal, uniform, monte carlo
     variance_scaling = False
     variance_lower = 0
     variance_upper = 255
@@ -49,6 +49,10 @@ class Options(object):
     evaluate_all = True
     evaluate_inner = True
     evaluate_outer = True
+
+    use_problem_set_for_policy = False
+    monte_carlo_sampling_init_count_value = 0
+    monte_carlo_sampling_random_samples = 100
 
     def __init__(self, iterable=(), **kwargs):
         self.__dict__.update(iterable, **kwargs)

@@ -148,17 +148,24 @@ class Evaluator(object):
             # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
                 try:
-                    # build mdp for problem
+                    #needed for the split, but run is not needed
                     mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
-
                     # output to the console what we are doing
                     print("Creating and evaluating " + str(mdp.getName()) + " for " + str(problem.getName()) + " problem")
 
-                    # run mdp
-                    mdp.run()
+                    # build mdp for problem
+                    if not self.options.use_problem_set_for_policy:
 
-                    # log time that it took
-                    self.time[problem_key, mdp_key] = mdp.time
+                        # run mdp
+                        mdp.run()
+                        # log time that it took
+                        self.time[problem_key, mdp_key] = mdp.time
+                    else:
+                        self.time[problem_key, mdp_key] = -1 #TODO remove timing, or measure something usefull
+
+
+
+
 
                     total_sample_count = len(ps.samples)
                     number_of_paths = self.options.number_of_paths
@@ -171,33 +178,57 @@ class Evaluator(object):
                     if self.options.evaluate_all:
                         ps_lim = ps.limit(number_of_paths)
                         if self.options.do_computation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = ps_lim.computeMDP(mdp)
+                            else:
+                                result = ps_lim.computeMDPpolicyPerProblem(mdp_constructor, problem)
                             self.log(problem_key, mdp_key, Sampling.ALL, EM.COMPUTED,
-                                     ps_lim.computeMDP(mdp), ps_lim.distances)
+                                     result, ps_lim.distances)
                         if self.options.do_simulation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = ps_lim.simulateMDP(mdp)
+                            else:
+                                result = ps_lim.simulateMDP(mdp)
                             self.log(problem_key, mdp_key, Sampling.ALL, EM.SIMULATED,
-                                     ps_lim.simulateMDP(mdp), ps_lim.distances)
+                                     result, ps_lim.distances)
 
                     # evaluate on inner results
                     if self.options.evaluate_inner:
                         filter_ratio = len(self.inner_samples.samples) / total_sample_count
                         in_lim = self.inner_samples.limit(number_of_paths)
                         if self.options.do_computation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = in_lim.computeMDP(mdp)
+                            else:
+                                result = in_lim.computeMDPpolicyPerProblem(mdp_constructor, problem)
                             self.log(problem_key, mdp_key, Sampling.IN, EM.COMPUTED,
-                                     in_lim.computeMDP(mdp), in_lim.distances, filter_ratio)
+                                     result, in_lim.distances, filter_ratio)
                         if self.options.do_simulation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = in_lim.simulateMDP(mdp)
+                            else:
+                                result = in_lim.simulateMDPpolicyPerProblem(mdp_constructor, problem)
                             self.log(problem_key, mdp_key, Sampling.IN, EM.SIMULATED,
-                                     in_lim.simulateMDP(mdp), in_lim.distances, filter_ratio)
+                                     result, in_lim.distances, filter_ratio)
 
                     # evaluate on outer results
                     if self.options.evaluate_outer:
                         filter_ratio = len(self.outer_samples.samples) / total_sample_count
                         out_lim = self.outer_samples.limit(number_of_paths)
                         if self.options.do_computation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = out_lim.computeMDP(mdp)
+                            else:
+                                result = out_lim.computeMDPpolicyPerProblem(mdp_constructor, problem)
                             self.log(problem_key, mdp_key, Sampling.OUT, EM.COMPUTED,
-                                     out_lim.computeMDP(mdp), out_lim.distances, filter_ratio)
+                                     result, out_lim.distances, filter_ratio)
                         if self.options.do_simulation:
+                            if not self.options.use_problem_set_for_policy:
+                                result = out_lim.simulateMDP(mdp)
+                            else:
+                                result = out_lim.simulateMDPpolicyPerProblem(mdp_constructor, problem)
                             self.log(problem_key, mdp_key, Sampling.OUT, EM.SIMULATED,
-                                     out_lim.simulateMDP(mdp), out_lim.distances, filter_ratio)
+                                     result, out_lim.distances, filter_ratio)
 
                     # write log
                     self.write_log(problem_key, mdp_key, mdp)
