@@ -20,6 +20,22 @@ class Options(object):
 
     non_robust_actions = []
 
+    color = [
+        'tab:blue',
+        'tab:orange',
+        'tab:red',
+        'tab:purple',
+        'tab:brown',
+        'tab:pink',
+        'tab:green',
+        'tab:gray',
+        'tab:olive',
+        'tab:cyan',
+        'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9',
+        'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+
+    marker = ['o', 'v', "1", "s", "p", "P", "*", "+", "x", "D", "X", "2", "3", "4"]
+
     save_figures = True
     logging_behavior = LoggingBehavior.DEFAULT
 

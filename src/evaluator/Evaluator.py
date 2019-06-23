@@ -223,6 +223,7 @@ class Evaluator(object):
 
                 for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
                     results = {}
+                    color = {}
                     if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
                         name = mdp_constructor(self.problems[problem_key].transition_kernel,
                                                self.problems[problem_key].reward_matrix,
@@ -230,6 +231,7 @@ class Evaluator(object):
                         # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
                         if len(self.results[problem_key, mdp_key, sampling, evaluationMethod]) > 0:
                             results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                            color[name] = self.options.color[mdp_key]
 
                     min_length = _np.inf
                     for name in results:
@@ -238,13 +240,14 @@ class Evaluator(object):
                     holder = {}
                     for name in results:
                         holder[name] = random.sample(results[name], min_length)
-                        sns.distplot(holder[name], hist=self.options.plot_hist, label=name)
+                        sns.distplot(holder[name], color=color[name], hist=self.options.plot_hist, label=name)
 
                 pyplot.legend()
                 pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
                                dpi=150, format="png")
                 pyplot.show()
 
+                # make scatterplot
                 self.figures[problem_key, sampling, evaluationMethod, "scatter"] = pyplot.figure()
                 title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
 
