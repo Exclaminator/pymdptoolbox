@@ -58,7 +58,7 @@ def run_default():
             # Robust(Likelihood(2.4, 0.001)),
             # Robust(Likelihood(2.8, 0.001)),
             # Robust(Likelihood(3, 0.001)), # range 1.5 - 0ish
-            # Robust(Interval(tk_low, tk_up)),
+            Robust(Interval(variance=0.0138)),
             # Robust(Interval(rtk_low, rtk_up))
         ],  # max 12 models (no further colors or shapes are defined
         Options(
