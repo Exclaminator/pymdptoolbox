@@ -266,11 +266,39 @@ class Evaluator(object):
                                                self.problems[problem_key].discount_factor).getName()
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
                         distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
-                        l = min(len(results[name]), len(distances[name]))
-                        sns.scatterplot(x=distances[name][1:l], y=results[name][1:l], s=5, label=name)
+                        # leng = min(len(results[name]), len(distances[name]))
+                        sns.scatterplot(x=distances[name], y=results[name],
+                                        markers=self.options.marker[mdp_key], s=5, label=name)
 
                 pyplot.legend()
-                pyplot.savefig(self.log_dir + title + "scatter.png", num=self.figures[problem_key, sampling,
+                pyplot.savefig(self.log_dir + title + "_scatter.png", num=self.figures[problem_key, sampling,
                                                                                       evaluationMethod],
                                dpi=150, format="png")
+                pyplot.show()
+
+                # make linear regression plot
+                self.figures[problem_key, sampling, evaluationMethod, "linregression"] = pyplot.figure()
+                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+
+                pyplot.title(title)
+                pyplot.xlabel("Transition kernel distance")
+                pyplot.ylabel("Value")
+
+                results = {}
+                distances = {}
+                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
+                            (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
+                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                               self.problems[problem_key].reward_matrix,
+                                               self.problems[problem_key].discount_factor).getName()
+                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                        distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
+                        # leng = min(len(results[name]), len(distances[name]))
+                        sns.regplot(x=distances[name], y=results[name], label=name,
+                                    marker=self.options.marker[mdp_key])
+
+                pyplot.legend()
+                pyplot.savefig(self.log_dir + title + "_linear_regression.png",
+                               num=self.figures[problem_key, sampling, evaluationMethod], dpi=150, format="png")
                 pyplot.show()
