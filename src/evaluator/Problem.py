@@ -144,8 +144,8 @@ class Problem(object):
         return Problem(tk, reward_matrix, discount_factor, "forest")
 
     @staticmethod
-    def get_random_problem(state_amount=10, A=5, discount_factor=0.9):
-        tk, reward_matrix = mdptoolbox.example.rand(state_amount, A, is_sparse=False)
+    def get_random_problem(S=10, A=5, discount_factor=0.9):
+        tk, reward_matrix = mdptoolbox.example.rand(S, A, is_sparse=False)
         reward_matrix = _np.maximum(reward_matrix, 0)
 
         return Problem(tk, reward_matrix, discount_factor, "random")
