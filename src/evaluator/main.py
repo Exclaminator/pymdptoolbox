@@ -13,16 +13,25 @@ default configuration, runs the forest problem on some models
 
 def run_default():
     # get tk_low and tk_up for the interval model
-    forest = Problem.get_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
-    random = Problem.get_random_problem(10, 10, 0.9)
-    tk_low, tk_up = Interval.compute_interval(forest.transition_kernel, 0.0138)
-    rtk_low, rtk_up = Interval.compute_interval(random.transition_kernel, 0.0138)
+    forest10 = Problem.get_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
+    forest30 = Problem.get_forest_problem(S=30, discount_factor=0.9, r1=10, r2=2, p=0.05)
+    forest80 = Problem.get_forest_problem(S=80, discount_factor=0.9, r1=10, r2=2, p=0.05)
+    forest100 = Problem.get_forest_problem(S=100, discount_factor=0.9, r1=10, r2=2, p=0.05)
+    random10 = Problem.get_random_problem(10, 10, 0.9)
+    tk_low10, tk_up10 = Interval.compute_interval(forest10.transition_kernel, 0.0138)
+    rtk_low, rtk_up = Interval.compute_interval(random10.transition_kernel, 0.0138)
     # tk_low = (tk-0.5).clip(min=0)
     # tk_up = (tk+0.5).clip(max=1)
 
     # problems can also be supplied as a list
     evaluator = Evaluator(
-        [forest, random],
+        [
+            forest10,
+            random10,
+            forest30,
+            forest80,
+            forest100
+        ],
         [
             # Robust(Wasserstein(0.03)),
             Robust(Wasserstein(0.07)),
@@ -30,10 +39,13 @@ def run_default():
             # Robust(Wasserstein(0.5)),
             # Robust(Wasserstein(2)),
             Robust(Ellipsoid(0.1312)),
+            # Robust(Ellipsoid(0.52)),
+            # Robust(Ellipsoid(0.7)),
+            # Robust(Ellipsoid(2)),
             ValueIteration,
             # Robust(Likelihood(0.1, 0.001)),
             # Robust(Likelihood(0.3, 0.001)),
-            # Robust(Likelihood(0.5, 0.001)),
+            Robust(Likelihood(0.5, 0.001)),
             # Robust(Likelihood(0.6, 0.001)),
             # Robust(Likelihood(0.7, 0.001)),
             # Robust(Likelihood(0.9, 0.001)),
@@ -46,8 +58,8 @@ def run_default():
             # Robust(Likelihood(2.4, 0.001)),
             # Robust(Likelihood(2.8, 0.001)),
             # Robust(Likelihood(3, 0.001)), # range 1.5 - 0ish
-            Robust(Interval(tk_low, tk_up)),
-            Robust(Interval(rtk_low, rtk_up))
+            # Robust(Interval(tk_low, tk_up)),
+            # Robust(Interval(rtk_low, rtk_up))
         ],  # max 12 models (no further colors or shapes are defined
         Options(
             number_of_paths=2000,
