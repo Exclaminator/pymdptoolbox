@@ -24,12 +24,30 @@ def run_default():
     evaluator = Evaluator(
         [forest, random],
         [
-            Robust(Wasserstein(0.07)),
-            Robust(Ellipsoid(0.1312)),
-            ValueIteration,
-            Robust(Likelihood(0.6125, 0.001)), # range 1.5 - 0ish
-            Robust(Interval(tk_low, tk_up)),
-            Robust(Interval(rtk_low, rtk_up))
+            # Robust(Wasserstein(0.03)),
+            # Robust(Wasserstein(0.07)),
+            # Robust(Wasserstein(0.17)),
+            # Robust(Wasserstein(0.5)),
+            # Robust(Wasserstein(2)),
+            # Robust(Ellipsoid(0.1312)),
+            # ValueIteration,
+            Robust(Likelihood(0.1, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(0.3, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(0.5, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(0.6, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(0.7, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(0.9, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(1, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(1.2, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(1.5, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(1.7, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(1.9, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(2.1, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(2.4, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(2.8, 0.001)), # range 1.5 - 0ish
+            Robust(Likelihood(3, 0.001)), # range 1.5 - 0ish
+            # Robust(Interval(tk_low, tk_up)),
+            # Robust(Interval(rtk_low, rtk_up))
         ],
         Options(
             number_of_paths=2000,
