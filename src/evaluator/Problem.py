@@ -1,3 +1,5 @@
+import random
+
 import numpy as _np
 from scipy.stats import wasserstein_distance
 
@@ -210,6 +212,6 @@ class ProblemSet(object):
                           .format(number_of_paths, len(self.samples)))
             samples = self.samples
         else:
-            samples = self.samples[0:number_of_paths]
+            samples = self.samples[random.sample(self.samples, number_of_paths)]
 
         return ProblemSet(samples, self.problem, self.options, self.sampling)
