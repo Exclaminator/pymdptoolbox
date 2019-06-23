@@ -18,10 +18,6 @@ def run_default():
     forest80 = Problem.get_forest_problem(S=80, discount_factor=0.9, r1=10, r2=2, p=0.05)
     forest100 = Problem.get_forest_problem(S=100, discount_factor=0.9, r1=10, r2=2, p=0.05)
     random10 = Problem.get_random_problem(10, 10, 0.9)
-    tk_low10, tk_up10 = Interval.compute_interval(forest10.transition_kernel, 0.0138)
-    rtk_low, rtk_up = Interval.compute_interval(random10.transition_kernel, 0.0138)
-    # tk_low = (tk-0.5).clip(min=0)
-    # tk_up = (tk+0.5).clip(max=1)
 
     # problems can also be supplied as a list
     evaluator = Evaluator(
@@ -55,7 +51,7 @@ def run_default():
             evaluate_outer=True,
             sample_var=0.5,
             sample_amount=2000,
-            sample_method = "normal", #normal, uniform, monte carlo
+            sample_method = "normal",  # normal, uniform, monte carlo
             monte_carlo_sampling_init_count_value = 1,
             monte_carlo_sampling_random_samples = 10,
             use_problem_set_for_policy=False,
