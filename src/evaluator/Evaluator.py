@@ -7,6 +7,7 @@ from matplotlib import pyplot
 import seaborn as sns
 from enum import Enum
 from Options import LoggingBehavior
+import pandas as pd
 
 class Sampling(Enum):
     ALL = 0
@@ -205,6 +206,7 @@ class Evaluator(object):
                 except AssertionError as err:
                     print(err)
             self.plot(problem_key)
+        self.scalability_analysis()
 
     def plot(self, problem_key):
         for sampling in Sampling:
@@ -303,3 +305,32 @@ class Evaluator(object):
                 pyplot.savefig(self.log_dir + title + "_linear_regression.png",
                                num=self.figures[problem_key, sampling, evaluationMethod], dpi=150, format="png")
                 pyplot.show()
+
+    def scalability_analysis(self):
+        self.figures["scalability"] = pyplot.figure()
+        fig, ax = pyplot.subplots()
+        pyplot.title("Scalability Analysis")
+        pyplot.xlabel("Instance size")
+        pyplot.ylabel("Runtime in ms")
+
+        runtimes = []
+        sizes = []
+        mdps = []
+        for mdp_key, mdp_const in enumerate(self.mdpconstructors):
+            p = self.problems[0]
+            mdp = mdp_const(p.transition_kernel, p.reward_matrix, p.discount_factor)
+            for problem_key, problem in enumerate(self.problems):
+                if (problem_key, mdp_key) in self.time:
+                    runtimes.append(self.time[problem_key, mdp_key])
+                    sizes.append(_np.product(problem.transition_kernel.shape))
+                    mdps.append(mdp.getName())
+        df = pd.DataFrame(data={
+            'runtimes': runtimes,
+            'sizes': sizes,
+            'mdp': mdps
+        })
+        sns.pointplot(x='sizes', y='runtimes', hue="mdp", data=df)
+        ax.legend()
+        pyplot.savefig(self.log_dir + "scalability_analysis.png",
+                       num=self.figures["scalability"], dpi=150, format="png")
+        pyplot.show()
