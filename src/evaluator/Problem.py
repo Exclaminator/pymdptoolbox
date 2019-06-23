@@ -143,7 +143,7 @@ class Problem(object):
         reward_matrix = _np.repeat(reward_matrix[:, :, _np.newaxis], reward_matrix.shape[1], axis=2)
 
         # create problem
-        return Problem(tk, reward_matrix, discount_factor, "forest")
+        return Problem(tk, reward_matrix, discount_factor, "forest("+str(S)+")")
 
     @staticmethod
     def get_random_problem(S=10, A=5, discount_factor=0.9):
