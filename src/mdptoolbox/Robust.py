@@ -188,9 +188,9 @@ class Ellipsoid(InnerMethod):
     def inSample(self, p) -> bool:
         for action in range(self.problem.A):
             for state in range(self.problem.S):
-                out_of_bounds = mean(power(
+                out_of_bounds = sum(divide(power(
                     subtract(p, self.problem.P[action][state]),
-                    2)
+                    2), self.problem.P[action][state] + sys.float_info.epsilon)
                 ) >= self.beta
                 if out_of_bounds:
                     return True
@@ -214,11 +214,14 @@ class Ellipsoid(InnerMethod):
         # ), self.problem.P[action][state]
         # ) <= self.beta)
 
-        model.addConstr(mean(
-            multiply(
-                subtract(p, self.problem.P[action][state]),
-                subtract(p, self.problem.P[action][state]))
-        ) <= self.beta)
+        model.addConstr(
+            sum(
+                divide(
+                    multiply(
+                        subtract(p, self.problem.P[action][state]),
+                        subtract(p, self.problem.P[action][state])),
+                    self.problem.P[action][state] + sys.float_info.epsilon)
+            ) <= self.beta)
 
         # stay silent
         model.setParam('OutputFlag', 0)
