@@ -232,17 +232,21 @@ class Ellipsoid(InnerMethod):
 
 class Interval(InnerMethod):
     # Initialize Interval
-    def __init__(self, p_lower, p_upper):
+    def __init__(self, p_lower=None, p_upper=None, variance=None):
         InnerMethod.__init__(self)
         self.p_upper = p_upper
         self.p_lower = p_lower
+        self.variance = variance
 
     # get name
     def getName(self):
-        return "Interval"
+        return "Interval(" + str(self.variance) + ")"
 
     def attachProblem(self, problem):
         InnerMethod.attachProblem(self, problem)
+        if self.variance is not None:
+            self.p_lower, self.p_upper = self.compute_interval(self.problem.P, self.variance)
+
         if self.p_lower.shape == (self.problem.S,):
             self.p_lower = repeat([repeat([self.p_lower], self.problem.S, axis=0)], self.problem.A, axis=0)
         if self.p_upper.shape == (self.problem.S,):
