@@ -25,30 +25,30 @@ def run_default():
         [forest, random],
         [
             # Robust(Wasserstein(0.03)),
-            # Robust(Wasserstein(0.07)),
+            Robust(Wasserstein(0.07)),
             # Robust(Wasserstein(0.17)),
             # Robust(Wasserstein(0.5)),
             # Robust(Wasserstein(2)),
-            # Robust(Ellipsoid(0.1312)),
-            # ValueIteration,
-            Robust(Likelihood(0.1, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(0.3, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(0.5, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(0.6, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(0.7, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(0.9, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(1, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(1.2, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(1.5, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(1.7, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(1.9, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(2.1, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(2.4, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(2.8, 0.001)), # range 1.5 - 0ish
-            Robust(Likelihood(3, 0.001)), # range 1.5 - 0ish
-            # Robust(Interval(tk_low, tk_up)),
-            # Robust(Interval(rtk_low, rtk_up))
-        ],
+            Robust(Ellipsoid(0.1312)),
+            ValueIteration,
+            # Robust(Likelihood(0.1, 0.001)),
+            # Robust(Likelihood(0.3, 0.001)),
+            # Robust(Likelihood(0.5, 0.001)),
+            # Robust(Likelihood(0.6, 0.001)),
+            # Robust(Likelihood(0.7, 0.001)),
+            # Robust(Likelihood(0.9, 0.001)),
+            # Robust(Likelihood(1, 0.001)),
+            # Robust(Likelihood(1.2, 0.001)),
+            # Robust(Likelihood(1.5, 0.001)),
+            # Robust(Likelihood(1.7, 0.001)),
+            # Robust(Likelihood(1.9, 0.001)),
+            # Robust(Likelihood(2.1, 0.001)),
+            # Robust(Likelihood(2.4, 0.001)),
+            # Robust(Likelihood(2.8, 0.001)),
+            # Robust(Likelihood(3, 0.001)), # range 1.5 - 0ish
+            Robust(Interval(tk_low, tk_up)),
+            Robust(Interval(rtk_low, rtk_up))
+        ],  # max 12 models (no further colors or shapes are defined
         Options(
             number_of_paths=2000,
             number_of_sims=1000,
@@ -60,7 +60,7 @@ def run_default():
             sample_var=0.5,
             sample_amount=2000,
             sample_uniform=False,
-            non_robust_actions=[], # replace with [1] if for action there should be no robustness
+            non_robust_actions=[],  # replace with [1] if for action there should be no robustness
             variance_scaling=True,
             variance_lower=0,
             variance_upper=1,
