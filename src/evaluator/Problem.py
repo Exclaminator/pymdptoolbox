@@ -255,7 +255,7 @@ class ProblemSet(object):
         # returns a new problem set, with a limited set of samples
         # limit the problem set to a fixed amount of problems
         if len(self.samples) < number_of_paths:
-            warnings.warn("number_of_paths ({}) is larger than the number of filtered policies ({})"
+            warnings.warn("number_of_paths ({}) is larger than the number of samples generated that are classified as inner-samples ({})"
                           .format(number_of_paths, len(self.samples)))
             samples = self.samples
         else:

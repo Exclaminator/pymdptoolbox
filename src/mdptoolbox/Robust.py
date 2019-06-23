@@ -175,6 +175,7 @@ class InnerMethod:
 
 
 class Ellipsoid(InnerMethod):
+
     # Initialize Ellipsoid
     def __init__(self, beta):
         InnerMethod.__init__(self)
@@ -186,16 +187,18 @@ class Ellipsoid(InnerMethod):
 
     # see if a transition kernel p is in sample
     def inSample(self, p) -> bool:
+        max_dis = 0
         for action in range(self.problem.A):
             for state in range(self.problem.S):
-                out_of_bounds = sum(divide(power(
-                    subtract(p, self.problem.P[action][state]),
-                    2), self.problem.P[action][state] + sys.float_info.epsilon)
-                ) >= self.beta
-                if out_of_bounds:
-                    return True
-
-        return False
+                # max_dis = maximum(max_dis, sum(divide(power(
+                #     subtract(p[action][state], self.problem.P[action][state]),
+                #     2), self.problem.P[action][state] + sys.float_info.epsilon)
+                # ))
+                max_dis = maximum(max_dis, sum(multiply(power(
+                    subtract(p[action][state], self.problem.P[action][state]),
+                    2), 1 - self.problem.P[action][state])
+                ))
+        return max_dis <= self.beta
 
     # calculate update scalar for inner method
     def run(self, state, action):
@@ -208,19 +211,19 @@ class Ellipsoid(InnerMethod):
         # below is old. But this criteria rejected a lot of samples as probabilities can go to 0
         # also I don't think it fully matches the paper implementation
         # model.addConstr(divide(sum(
-        #     multiply(
+        # model.addConstr(sum(
+        #     divide(multiply(
         #         subtract(p, self.problem.P[action][state]),
-        #         subtract(p, self.problem.P[action][state]))
-        # ), self.problem.P[action][state]
+        #         subtract(p, self.problem.P[action][state])),
+        #         self.problem.P[action][state] + sys.float_info.epsilon)
         # ) <= self.beta)
-
         model.addConstr(
             sum(
-                divide(
+                multiply(
                     multiply(
                         subtract(p, self.problem.P[action][state]),
                         subtract(p, self.problem.P[action][state])),
-                    self.problem.P[action][state] + sys.float_info.epsilon)
+                    1 - self.problem.P[action][state])
             ) <= self.beta)
 
         # stay silent

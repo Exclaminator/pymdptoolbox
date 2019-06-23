@@ -9,6 +9,7 @@ from enum import Enum
 from Options import LoggingBehavior
 import pandas as pd
 
+
 class Sampling(Enum):
     ALL = 0
     IN = 1
@@ -19,11 +20,10 @@ class EM(Enum):
     COMPUTED = 0
     SIMULATED = 1
 
+
 class Evaluator(object):
     """
     create an evaluator, which can then be run.
-    The arguments are dictionary objects.
-    Opens a log file
     """
     def __init__(self, problems, mdpconstructors, options):
         # if there is a single problem make it a list
@@ -133,6 +133,9 @@ class Evaluator(object):
 
             to_write_str = json.dumps(to_write, indent=4, separators=(',', ': '))
             to_write_str += "\n"
+        else:
+            err = "invalid logging behavior:"+str(self.options.logging_behavior)
+            to_write_str = err
 
         self.file_to_write.write(to_write_str)
 
