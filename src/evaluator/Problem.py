@@ -1,6 +1,7 @@
 import random
 
 import numpy as _np
+from numpy.core.defchararray import lower
 from scipy.stats import wasserstein_distance
 
 import mdptoolbox.example
@@ -13,6 +14,30 @@ import warnings
 creates a problem from a dict.
 Selects the corresponding type
 """
+
+
+def monte_carlo_sampling(transition_kernel, nr_kernels, init_count_value,
+                         nr_samples_per_kernel):
+    S = transition_kernel.shape[1]
+    A = transition_kernel.shape[0]
+    result = _np.zeros((nr_kernels, A, S, S))
+
+
+    init_counts = []
+
+    if init_count_value > 0:
+        init_counts = _np.repeat(_np.array(range(S)), init_count_value)
+    for i in range(nr_kernels):
+        for a in range(A):
+            for s in range(S):
+                r = _np.random.choice(S, nr_samples_per_kernel, p = transition_kernel[a,s])
+                ri = _np.append(r, init_counts)
+                bins = range(0, S + 1)
+                res, bins = _np.histogram(ri, bins= bins, density=True)
+                result[i,a,s,:]= res
+
+    res = _np.moveaxis(result, 0,3)
+    return res
 
 
 class Problem(object):
@@ -48,10 +73,12 @@ class Problem(object):
                 range(options.variance_lower, options.sample_amount),
                 options.sample_amount / options.variance_upper)
 
-        if options.sample_uniform:
+        if lower(options.sample_method) == "uniform":
             # sample from uniform
             tk_low, tk_up = Interval.compute_interval(mu, variance)
             non_normalized_tks = _np.random.uniform(tk_low, tk_up)
+        elif lower(options.sample_method) == "monte carlo":
+            non_normalized_tks = monte_carlo_sampling(self.transition_kernel, sample_amount, options.monte_carlo_sampling_init_count_value, options.monte_carlo_sampling_random_samples)
         else:
             # sample from normal
             non_normalized_tks = _np.random.normal(mu, variance)
@@ -61,7 +88,7 @@ class Problem(object):
         for i in range(sample_amount):
             tk = self.normalize_tk(non_normalized_tks[:, :, :, i])
             for a in options.non_robust_actions:
-                tk[a] =  self.transition_kernel[a]
+                tk[a] = self.transition_kernel[a]
 
             distance = 0
             for a in range(self.transition_kernel.shape[0]):
@@ -196,12 +223,32 @@ class ProblemSet(object):
             self.resultsComputed.append(problem.computeMDP(mdp))
         return self.resultsComputed
 
+    def computeMDPpolicyPerProblem(self, mdp_constructor, test_problem):
+        # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
+        self.resultsComputed = []
+        for i, problem in enumerate(self.samples):
+            print("Compute {}/{}".format(i, len(self.samples)))
+            mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
+            mdp.run()
+            self.resultsComputed.append(test_problem.computeMDP(mdp))
+        return self.resultsComputed
+
     #  if self.options.do_simulation:
     def simulateMDP(self, mdp):
         # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
         self.resultsSimulated = []
         for problem in self.samples:
             self.resultsSimulated.append(problem.simulateMDP(mdp, self.options))
+        return self.resultsSimulated
+
+    def simulateMDPpolicyPerProblem(self, mdp_constructor, test_problem):
+        # for problem in self.samples[1:min(len(self.samples), self.options.number_of_paths)]:
+        self.resultsSimulated = []
+        for i, problem in enumerate(self.samples):
+            print("Simulate {}/{}".format(i, len(self.samples)))
+            mdp = mdp_constructor(problem.transition_kernel, problem.reward_matrix, problem.discount_factor)
+            mdp.run()
+            self.resultsSimulated.append(test_problem.simulateMDP(mdp, self.options))
         return self.resultsSimulated
 
     def limit(self, number_of_paths):

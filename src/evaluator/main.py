@@ -71,12 +71,16 @@ def run_default():
             evaluate_outer=True,
             sample_var=0.5,
             sample_amount=2000,
-            sample_uniform=False,
+            sample_method = "normal", #normal, uniform, monte carlo
+            monte_carlo_sampling_init_count_value = 1,
+            monte_carlo_sampling_random_samples = 10,
+            use_problem_set_for_policy=False,
             non_robust_actions=[],  # replace with [1] if for action there should be no robustness
             variance_scaling=True,
             variance_lower=0,
             variance_upper=1,
-            logging_behavior=LoggingBehavior.TABLE
+            logging_behavior=LoggingBehavior.TABLE,
+
         ))
     evaluator.run()
 
