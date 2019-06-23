@@ -159,7 +159,7 @@ class Evaluator(object):
 
                     # log time that it took
                     self.time[problem_key, mdp_key] = mdp.time
-                    print("Policy found in " + str(mdp.time)+ "ms")
+                    print("Policy found in " + str(mdp.time) + " seconds")
 
                     total_sample_count = len(ps.samples)
                     number_of_paths = self.options.number_of_paths
