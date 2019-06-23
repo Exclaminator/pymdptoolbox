@@ -177,7 +177,7 @@ class Problem(object):
         tk, reward_matrix = mdptoolbox.example.rand(S, A, is_sparse=False)
         reward_matrix = _np.maximum(reward_matrix, 0)
 
-        return Problem(tk, reward_matrix, discount_factor, "random")
+        return Problem(tk, reward_matrix, discount_factor, "random("+str(S)+")")
 
 
 class ProblemSet(object):
