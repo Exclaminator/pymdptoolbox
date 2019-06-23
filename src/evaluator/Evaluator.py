@@ -356,6 +356,7 @@ class Evaluator(object):
             'sizes': sizes,
             'mdp': mdps
         })
+        self.file_to_write.write(df.to_csv())
         sns.pointplot(x='sizes', y='runtimes', hue="mdp", data=df)
         ax.legend()
         pyplot.savefig(self.log_dir + "scalability_analysis.png",
