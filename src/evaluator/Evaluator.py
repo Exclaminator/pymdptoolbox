@@ -266,8 +266,8 @@ class Evaluator(object):
                                                self.problems[problem_key].discount_factor).getName()
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
                         distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
-                        # leng = min(len(results[name]), len(distances[name]))
-                        sns.scatterplot(x=distances[name], y=results[name],
+                        leng = min(len(results[name]), len(distances[name]))
+                        sns.scatterplot(x=distances[name][1:leng], y=results[name][1:leng],
                                         markers=self.options.marker[mdp_key], s=5, label=name)
 
                 pyplot.legend()
@@ -294,8 +294,8 @@ class Evaluator(object):
                                                self.problems[problem_key].discount_factor).getName()
                         results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
                         distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
-                        # leng = min(len(results[name]), len(distances[name]))
-                        sns.regplot(x=distances[name], y=results[name], label=name,
+                        leng = min(len(results[name]), len(distances[name]))
+                        sns.regplot(x=distances[name][1:leng], y=results[name][1:leng], label=name,
                                     marker=self.options.marker[mdp_key])
 
                 pyplot.legend()
