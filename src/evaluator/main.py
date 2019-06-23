@@ -26,24 +26,24 @@ def run_default():
     # problems can also be supplied as a list
     evaluator = Evaluator(
         [
-            forest10,
+            # forest10,
             random10,
-            forest30,
-            forest80,
-            forest100
+            # forest30,
+            # forest80,
+            # forest100
         ],
         [
-            # Robust(Wasserstein(0.5)),
+            # Robugitst(Wasserstein(0.5)),
             # Robust(Wasserstein(2)),
-            Robust(Ellipsoid(0.1312)),
+            Robust(Likelihood(1.5, 0.01)),
             # Robust(Ellipsoid(0.52)),
             # Robust(Ellipsoid(0.7)),
             # Robust(Ellipsoid(2)),
-            Robust(Ellipsoid(0.1)),
-            Robust(Ellipsoid(0.2)),
-            Robust(Ellipsoid(0.3)),
-            Robust(Ellipsoid(0.4)),
-            Robust(Interval(variance=0.0138)),
+            # Robust(Ellipsoid(0.1)),
+            # Robust(Ellipsoid(0.2)),
+            # Robust(Ellipsoid(0.3)),
+            # Robust(Ellipsoid(0.4)),
+            # Robust(Interval(variance=0.0138)),
             # Robust(Interval(rtk_low, rtk_up))
         ],  # max 12 models (no further colors or shapes are defined
         Options(
