@@ -238,101 +238,104 @@ class Evaluator(object):
     def plot(self, problem_key):
         for sampling in Sampling:
             for evaluationMethod in EM:
-                found = False
-                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
-                        found = True
-                if not found: continue
+                try:
+                    found = False
+                    for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                        if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
+                            found = True
+                    if not found: continue
 
-                self.figures[problem_key, sampling, evaluationMethod] = pyplot.figure()
-                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+                    self.figures[problem_key, sampling, evaluationMethod] = pyplot.figure()
+                    title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
 
-                pyplot.title(title)
-                pyplot.xlabel("Value")
-                pyplot.ylabel("Frequency")
+                    pyplot.title(title)
+                    pyplot.xlabel("Value")
+                    pyplot.ylabel("Frequency")
 
-                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                    for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                        results = {}
+                        color = {}
+                        if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
+                            name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                                   self.problems[problem_key].reward_matrix,
+                                                   self.problems[problem_key].discount_factor).getName()
+                            # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
+                            if len(self.results[problem_key, mdp_key, sampling, evaluationMethod]) > 0:
+                                results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                                color[name] = self.options.color[mdp_key]
+
+                        min_length = _np.inf
+                        for name in results:
+                            min_length = min(min_length, len(results[name]))
+
+                        holder = {}
+                        for name in results:
+                            holder[name] = random.sample(results[name], min_length)
+                            sns.distplot(holder[name], color=color[name], hist=self.options.plot_hist, label=name)
+
+                    pyplot.legend()
+                    pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
+                                   dpi=150, format="png")
+                    pyplot.show()
+
+                    # make scatterplot
+                    self.figures[problem_key, sampling, evaluationMethod, "scatter"] = pyplot.figure()
+                    title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+
+                    pyplot.title(title)
+                    pyplot.xlabel("Transition kernel distance")
+                    pyplot.ylabel("Value")
+
+
                     results = {}
-                    color = {}
-                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results:
-                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
-                                               self.problems[problem_key].reward_matrix,
-                                               self.problems[problem_key].discount_factor).getName()
-                        # print("plotting " + name + " with " + str(sampling) + " " + str(evaluationMethod))
-                        if len(self.results[problem_key, mdp_key, sampling, evaluationMethod]) > 0:
+                    distances = {}
+                    for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                        if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
+                                (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
+                            name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                                   self.problems[problem_key].reward_matrix,
+                                                   self.problems[problem_key].discount_factor).getName()
                             results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                            color[name] = self.options.color[mdp_key]
+                            distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
+                            leng = min(len(results[name]), len(distances[name]))
+                            sns.scatterplot(x=distances[name][1:leng], y=results[name][1:leng],
+                                            markers=self.options.marker[mdp_key], s=5, label=name)
 
-                    min_length = _np.inf
-                    for name in results:
-                        min_length = min(min_length, len(results[name]))
+                    pyplot.legend()
+                    pyplot.savefig(self.log_dir + title + "_scatter.png", num=self.figures[problem_key, sampling,
+                                                                                          evaluationMethod],
+                                   dpi=150, format="png")
+                    pyplot.show()
 
-                    holder = {}
-                    for name in results:
-                        holder[name] = random.sample(results[name], min_length)
-                        sns.distplot(holder[name], color=color[name], hist=self.options.plot_hist, label=name)
+                    # make linear regression plot
+                    self.figures[problem_key, sampling, evaluationMethod, "linregression"] = pyplot.figure()
+                    title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
 
-                pyplot.legend()
-                pyplot.savefig(self.log_dir + title + ".png", num=self.figures[problem_key, sampling, evaluationMethod],
-                               dpi=150, format="png")
-                pyplot.show()
+                    pyplot.title(title)
+                    pyplot.xlabel("Transition kernel distance")
+                    pyplot.ylabel("Value")
 
-                # make scatterplot
-                self.figures[problem_key, sampling, evaluationMethod, "scatter"] = pyplot.figure()
-                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
+                    results = {}
+                    distances = {}
+                    for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
+                        if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
+                                (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
+                            name = mdp_constructor(self.problems[problem_key].transition_kernel,
+                                                   self.problems[problem_key].reward_matrix,
+                                                   self.problems[problem_key].discount_factor).getName()
+                            results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
+                            distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
+                            leng = min(len(results[name]), len(distances[name]))
+                            if leng >  0:
+                                sns.regplot(x=distances[name][1:leng], y=results[name][1:leng], label=name,
+                                            marker=self.options.marker[mdp_key])
 
-                pyplot.title(title)
-                pyplot.xlabel("Transition kernel distance")
-                pyplot.ylabel("Value")
-
-
-                results = {}
-                distances = {}
-                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
-                            (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
-                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
-                                               self.problems[problem_key].reward_matrix,
-                                               self.problems[problem_key].discount_factor).getName()
-                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
-                        leng = min(len(results[name]), len(distances[name]))
-                        sns.scatterplot(x=distances[name][1:leng], y=results[name][1:leng],
-                                        markers=self.options.marker[mdp_key], s=5, label=name)
-
-                pyplot.legend()
-                pyplot.savefig(self.log_dir + title + "_scatter.png", num=self.figures[problem_key, sampling,
-                                                                                      evaluationMethod],
-                               dpi=150, format="png")
-                pyplot.show()
-
-                # make linear regression plot
-                self.figures[problem_key, sampling, evaluationMethod, "linregression"] = pyplot.figure()
-                title = self.problems[problem_key].getName() + "-" + str(sampling) + "-" + str(evaluationMethod)
-
-                pyplot.title(title)
-                pyplot.xlabel("Transition kernel distance")
-                pyplot.ylabel("Value")
-
-                results = {}
-                distances = {}
-                for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
-                    if (problem_key, mdp_key, sampling, evaluationMethod) in self.results and \
-                            (problem_key, mdp_key, sampling, evaluationMethod) in self.distances:
-                        name = mdp_constructor(self.problems[problem_key].transition_kernel,
-                                               self.problems[problem_key].reward_matrix,
-                                               self.problems[problem_key].discount_factor).getName()
-                        results[name] = self.results[problem_key, mdp_key, sampling, evaluationMethod]
-                        distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
-                        leng = min(len(results[name]), len(distances[name]))
-                        if leng >  0:
-                            sns.regplot(x=distances[name][1:leng], y=results[name][1:leng], label=name,
-                                        marker=self.options.marker[mdp_key])
-
-                pyplot.legend()
-                pyplot.savefig(self.log_dir + title + "_linear_regression.png",
-                               num=self.figures[problem_key, sampling, evaluationMethod], dpi=150, format="png")
-                pyplot.show()
+                    pyplot.legend()
+                    pyplot.savefig(self.log_dir + title + "_linear_regression.png",
+                                   num=self.figures[problem_key, sampling, evaluationMethod], dpi=150, format="png")
+                    pyplot.show()
+                except ValueError as err:
+                    print(err)
 
     def scalability_analysis(self):
         self.figures["scalability"] = pyplot.figure()
