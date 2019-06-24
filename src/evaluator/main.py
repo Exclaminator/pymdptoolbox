@@ -22,12 +22,12 @@ def run_default():
     # problems can also be supplied as a list
     evaluator = Evaluator(
         [
-            forest(5),
             forest(10),
             forest(30),
-            random(5),
+            forest(50),
             random(10),
-            random(30)
+            random(30),
+            random(50)
         ],
         [
             Robust(Wasserstein(0.1658)),
