@@ -335,7 +335,7 @@ class Evaluator(object):
                             distances[name] = self.distances[problem_key, mdp_key, sampling, evaluationMethod]
                             leng = min(len(results[name]), len(distances[name]))
                             if leng >  0:
-                                sns.regplot(x=distances[name][1:leng], y=results[name][1:leng], label=name,
+                                sns.regplot(x=distances[name][0:leng], y=results[name][0:leng], label=name,
                                             marker=self.options.marker[mdp_key])
 
                     pyplot.legend()

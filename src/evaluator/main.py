@@ -37,7 +37,7 @@ def run_default():
             ValueIteration
         ],  # max 12 models (no further colors or shapes are defined)
         Options(
-            number_of_paths=100,
+            number_of_paths=1000,
             number_of_sims=100,
             plot_hist=True,
             do_simulation=False,

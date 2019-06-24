@@ -173,7 +173,9 @@ class Problem(object):
         return Problem(tk, reward_matrix, discount_factor, "forest("+str(S)+")")
 
     @staticmethod
-    def get_random_problem(S=10, A=5, discount_factor=0.9):
+    def get_random_problem(S=10, A=5, discount_factor=0.9, seed=None):
+        if seed is not None:
+            _np.random.seed(seed)
         tk, reward_matrix = mdptoolbox.example.rand(S, A, is_sparse=False)
         reward_matrix = _np.maximum(reward_matrix, 0)
 
