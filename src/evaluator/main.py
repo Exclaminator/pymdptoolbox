@@ -30,17 +30,11 @@ def run_default():
             random(30)
         ],
         [
-            # Robust(Wasserstein(0.5)),
-            # Robust(Wasserstein(2)),
-            Robust(Ellipsoid(0.1312)),
-            # Robust(Ellipsoid(0.52)),
-            # Robust(Ellipsoid(0.7)),
-            # Robust(Ellipsoid(2)),
-            Robust(Ellipsoid(0.1)),
-            Robust(Ellipsoid(0.2)),
-            Robust(Ellipsoid(0.3)),
-            Robust(Ellipsoid(0.4)),
-            Robust(Interval(variance=0.0138)),
+            Robust(Wasserstein(0.1658)),
+            Robust(Likelihood(4.07, 0.001)),
+            Robust(Ellipsoid(0.345)),
+            Robust(Interval(variance=0.105)),
+            ValueIteration
         ],  # max 12 models (no further colors or shapes are defined
         Options(
             number_of_paths=100,
