@@ -240,7 +240,8 @@ class Evaluator(object):
                 except AssertionError as err:
                     print(err)
             self.plot(problem_key)
-        self.scalability_analysis()
+        if self.options.scalability_analysis:
+            self.scalability_analysis()
 
     def plot(self, problem_key):
         for sampling in Sampling:

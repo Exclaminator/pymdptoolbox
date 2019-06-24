@@ -17,6 +17,7 @@ class Options(object):
     variance_scaling = False
     variance_lower = 0
     variance_upper = 255
+    scalability_analysis = False
 
     non_robust_actions = []
 
