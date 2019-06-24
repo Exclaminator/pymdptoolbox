@@ -147,7 +147,8 @@ class Evaluator(object):
         # for all problems
         for problem_key, problem in enumerate(self.problems):
             # create a set with transition kernels similar to problem (as specified by options)
-            ps = problem.getProblemSet(self.options)
+            if self.options.evaluate_all or self.options.evaluate_inner or self.options.evaluate_outer:
+                ps = problem.getProblemSet(self.options)
 
             # for all mdp's
             for mdp_key, mdp_constructor in enumerate(self.mdpconstructors):
