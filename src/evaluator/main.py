@@ -13,20 +13,21 @@ default configuration, runs the forest problem on some models
 
 def run_default():
     # get tk_low and tk_up for the interval model
-    forest10 = Problem.get_forest_problem(S=10, discount_factor=0.9, r1=10, r2=2, p=0.05)
-    forest30 = Problem.get_forest_problem(S=30, discount_factor=0.9, r1=10, r2=2, p=0.05)
-    forest80 = Problem.get_forest_problem(S=80, discount_factor=0.9, r1=10, r2=2, p=0.05)
-    forest100 = Problem.get_forest_problem(S=100, discount_factor=0.9, r1=10, r2=2, p=0.05)
-    random10 = Problem.get_random_problem(10, 10, 0.9)
+    def forest(size):
+        return Problem.get_forest_problem(S=size, discount_factor=0.9, r1=10, r2=2, p=0.05)
+
+    def random(size, actions=5):
+        return Problem.get_random_problem(S=size, A=actions, discount_factor=0.9)
 
     # problems can also be supplied as a list
     evaluator = Evaluator(
         [
-            forest10,
-            random10,
-            forest30,
-            forest80,
-            forest100
+            forest(5),
+            forest(10),
+            forest(30),
+            random(5),
+            random(10),
+            random(30)
         ],
         [
             # Robust(Wasserstein(0.5)),
