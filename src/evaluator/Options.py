@@ -24,13 +24,13 @@ class Options(object):
         'tab:blue',
         'tab:orange',
         'tab:red',
-        'tab:purple',
-        'tab:brown',
-        'tab:pink',
+#        'tab:purple',
+#        'tab:brown',
+#        'tab:pink',
         'tab:green',
         'tab:gray',
-        'tab:olive',
-        'tab:cyan',
+#        'tab:olive',
+#         'tab:cyan',
         'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9',
         'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
