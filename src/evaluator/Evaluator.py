@@ -3,6 +3,7 @@ import os
 import random
 from datetime import datetime
 import numpy as _np
+import sys
 from matplotlib import pyplot
 import seaborn as sns
 from enum import Enum
@@ -169,7 +170,6 @@ class Evaluator(object):
                     else:
                         self.time[problem_key, mdp_key] = -1  # TODO: remove timing, or measure all generation times
 
-                    total_sample_count = len(ps.samples)
                     number_of_paths = self.options.number_of_paths
 
                     # create inner and outer samples sets
@@ -196,6 +196,7 @@ class Evaluator(object):
 
                     # evaluate on inner results
                     if self.options.evaluate_inner:
+                        total_sample_count = len(ps.samples)
                         filter_ratio = len(self.inner_samples.samples) / total_sample_count
                         in_lim = self.inner_samples.limit(number_of_paths)
                         if self.options.do_computation:
@@ -215,6 +216,7 @@ class Evaluator(object):
 
                     # evaluate on outer results
                     if self.options.evaluate_outer:
+                        total_sample_count = len(ps.samples)
                         filter_ratio = len(self.outer_samples.samples) / total_sample_count
                         out_lim = self.outer_samples.limit(number_of_paths)
                         if self.options.do_computation:
@@ -356,16 +358,22 @@ class Evaluator(object):
             mdp = mdp_const(p.transition_kernel, p.reward_matrix, p.discount_factor)
             for problem_key, problem in enumerate(self.problems):
                 if (problem_key, mdp_key) in self.time:
-                    runtimes.append(self.time[problem_key, mdp_key])
+                    runtimes.append(max(self.time[problem_key, mdp_key], 0.0009))
                     sizes.append(_np.product(problem.transition_kernel.shape))
                     mdps.append(mdp.getName())
-        df = pd.DataFrame(data={
+        df = pd.read_csv('../../scalability.txt', names=['runtimes', 'sizes', 'mdp'], header = None)
+
+        df = df.append(pd.DataFrame(data={
             'runtimes': runtimes,
             'sizes': sizes,
             'mdp': mdps
-        })
-        self.file_to_write.write(df.to_csv())
-        sns.pointplot(x='sizes', y='runtimes', hue="mdp", data=df)
+        }))
+
+        with open('../../scalability.txt', 'w+') as file:
+            file.write(df.to_csv(header=False))
+
+        sns.pointplot(x='sizes', y='Time in seconds', hue="mdp", data=df, color=self.options.color,
+                      markers=self.options.marker)
         pyplot.yscale("log")
         pyplot.xscale("log")
         ax.get_xaxis().get_major_formatter().labelOnlyBase = False
