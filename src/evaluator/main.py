@@ -35,7 +35,7 @@ def run_default():
             Robust(Ellipsoid(0.345)),
             Robust(Interval(variance=0.105)),
             ValueIteration
-        ],  # max 12 models (no further colors or shapes are defined
+        ],  # max 12 models (no further colors or shapes are defined)
         Options(
             number_of_paths=100,
             number_of_sims=100,
@@ -46,9 +46,9 @@ def run_default():
             evaluate_outer=True,
             sample_var=0.5,
             sample_amount=2000,
-            sample_method = "normal",  # normal, uniform, monte carlo
-            monte_carlo_sampling_init_count_value = 1,
-            monte_carlo_sampling_random_samples = 10,
+            sample_method="normal",  # normal, uniform, monte carlo
+            monte_carlo_sampling_init_count_value=1,
+            monte_carlo_sampling_random_samples=10,
             use_problem_set_for_policy=False,
             non_robust_actions=[],  # replace with [1] if for action there should be no robustness
             variance_scaling=True,
