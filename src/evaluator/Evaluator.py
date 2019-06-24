@@ -11,6 +11,7 @@ from Options import LoggingBehavior
 import pandas as pd
 
 
+
 class Sampling(Enum):
     ALL = 0
     IN = 1
@@ -347,21 +348,19 @@ class Evaluator(object):
         self.figures["scalability"] = pyplot.figure()
         fig, ax = pyplot.subplots()
         pyplot.title("Scalability Analysis")
-        pyplot.xlabel("Instance size")
-        pyplot.ylabel("Runtime in ms")
 
         runtimes = []
         sizes = []
         mdps = []
         for mdp_key, mdp_const in enumerate(self.mdpconstructors):
-            p = self.problems[0]
-            mdp = mdp_const(p.transition_kernel, p.reward_matrix, p.discount_factor)
+            p = _np.asarray([[[.1, .9], [.8, .2]]])
+            mdp = mdp_const(p, p, 0.9)
             for problem_key, problem in enumerate(self.problems):
                 if (problem_key, mdp_key) in self.time:
                     runtimes.append(max(self.time[problem_key, mdp_key], 0.0009))
                     sizes.append(_np.product(problem.transition_kernel.shape))
                     mdps.append(mdp.getName())
-        df = pd.read_csv('../../scalability.txt', names=['runtimes', 'sizes', 'mdp'], header = None)
+        df = pd.read_csv('../../scalability.txt', names=['runtimes', 'sizes', 'mdp'], header=None)
 
         df = df.append(pd.DataFrame(data={
             'runtimes': runtimes,
@@ -372,8 +371,10 @@ class Evaluator(object):
         with open('../../scalability.txt', 'w+') as file:
             file.write(df.to_csv(header=False))
 
-        sns.pointplot(x='sizes', y='Time in seconds', hue="mdp", data=df, color=self.options.color,
-                      markers=self.options.marker)
+        sns.pointplot(x='sizes', y='runtimes', hue="mdp", data=df)
+
+        pyplot.xlabel("Instance size (Log)")
+        pyplot.ylabel("Runtime in seconds (Log)")
         pyplot.yscale("log")
         pyplot.xscale("log")
         ax.get_xaxis().get_major_formatter().labelOnlyBase = False
